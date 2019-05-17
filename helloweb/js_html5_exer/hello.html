@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>hello web...</title>
+		<link rel="stylesheet" href="./style.css">
+	</head>
+	<body>
+		<header>
+			Example from <a href="http://amzn.com/1430236655?tag=html5anim-20"><em>Foundation HTML5 Animation with JavaScript</em></a>
+		</header>
+		<canvas id="canvas" width="400" height="400"></canvas>
+		<aside>Open debugging console in web browser and move/click mouse.</aside>
+
+		<script src="./keycode.js"></script>
+		<script src="./util.js"></script>
+		<script src="./classes/arrow.js"></script>
+		<script>
+			window.onload = function () {
+				utils.selfDesc();
+
+				var	canvas = document.getElementById('canvas'),
+					mouse = utils.captureMouse(canvas),
+					context = canvas.getContext('2d'),
+					arrow = new Arrow();
+				arrow.x = canvas.width/2;
+				arrow.y = canvas.height/2;
+
+				function onMouseEvent (event) {
+					//console.log(event.type);
+				}
+				function onMouseDown (event) {
+					console.log(event.type + "(" + mouse.x + "," + mouse.y + ")");
+				}
+				function onKeyBoardEvent (event) {
+					//console.log(event.type + "(" + event.keyCode + ")");
+					switch (event.keyCode){
+						case keycode.UP:
+							console.log("UP..");
+							break;
+						case keycode.DOWN:
+							console.log("DOWN..");
+							break;
+						case keycode.LEFT:
+							console.log("LEFT..");
+							break;
+						case keycode.RIGHT:
+							console.log("RIGHT..");
+							break;
+					}
+				}
+				canvas.addEventListener('mousedown',	onMouseDown, false);
+				canvas.addEventListener('mouseup',	onMouseEvent, false);
+				canvas.addEventListener('click',	onMouseEvent, false);
+				canvas.addEventListener('dblclick',	onMouseEvent, false);
+				canvas.addEventListener('mousewheel',	onMouseEvent, false);
+				canvas.addEventListener('mousemove',	onMouseEvent, false);
+				canvas.addEventListener('mouseover',	onMouseEvent, false);
+				canvas.addEventListener('mouseout',	onMouseEvent, false);
+
+				window.addEventListener('keydown',	onKeyBoardEvent, false);
+				window.addEventListener('keyup',	onKeyBoardEvent, false);
+				console.log(Math.sin(Math.PI/6));
+				console.log(Math.atan2(1,2)*180/Math.PI);	//arctan, tan->angle
+
+
+				(function drawFrame(){
+					window.requestAnimationFrame(drawFrame,canvas);	//
+					context.clearRect(0,0,canvas.width,canvas.height);
+
+					var	dx = mouse.x - arrow.x;
+						dy = mouse.y - arrow.y;
+					arrow.rotation = Math.atan2(dy,dx);	//radians
+					arrow.draw(context);
+				}());
+			};
+		</script>
+	</body>
+</html>
