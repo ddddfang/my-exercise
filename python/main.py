@@ -38,15 +38,15 @@ else:
 
 #######################################pickle模块实现了基本的数据序列和反序列化 可以将对象以文件的形式存放在磁盘上
 import pickle
-#data = {'a':[1,2,3,4], 'b':('string','abc'), 'c':'hello'}
-#print(data)
-#pic_file = open( './data.pkl', 'wb')
-#pickle.dump(data,pic_file)
+data = {'a':[1,2,3,4], 'b':('string','abc'), 'c':'hello'}
+print(data)
+pic_file = open( './data.pkl', 'wb')
+pickle.dump(data,pic_file)
 
 
-f = open( './data.pkl', 'rb')
-st = pickle.load(f)
-print(st)
+#f = open( './data.pkl', 'rb')
+#st = pickle.load(f)
+#print(st)
 
 
 ######################################################实现一个数据爬虫
