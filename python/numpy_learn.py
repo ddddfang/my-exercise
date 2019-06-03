@@ -13,13 +13,40 @@ print("a.size=",a.size)#
 a = np.arange(10,30,0.5)    #step=0.5
 print(a)
 
-# 需要同过 列表/元组 来初始化 np.array
-# 这样是错误的-->  array(1,2,3,4)
-a = np.array([(1.5,2,3),(4,5,6)],dtype=np.complex)
+# 全0数组
+a = np.zeros((2,3),dtype=np.int16)
+# 全1数组
+a = np.ones((2,3))  # dtype default is float64
+
+# 产生随机数(0,1)
+a = np.random.random((2,3))
+a *= 10
 print(a)
 
-a = np.zeros((3,4),dtype=np.int16)
-b = np.ones((3,4))  # dtype default is float64
+# 需要通过 列表/元组 来初始化 np.array
+# 这样是错误的-->  array(1,2,3,4)
+#a = np.array([(1,2,3),(4,5,6)],dtype=np.complex)
+a = np.array([(1,2,3),(4,5,6)])
 print(a)
+print(a.sum(axis=0)) #对a的每一列求sum，得到一个数组,reduce
+print(a.min(axis=1)) #对a的每一行求min，得到一个数组,reduce
+print(np.exp(a))	#map操作,还有sin(a),cos(a),sqrt(a),add(a,b)也可以这样
+
+
+b = np.arange(0,3,0.5).reshape(2,3)
+print(b)
+
+# 矩阵 eltwise-add
+print(a+b)
+
+# 矩阵 eltwise-mul
+print(a*b)
+
+# 矩阵 dot-mul
+print(np.dot( a,b.reshape(3,2) ))
+
+
+
+
 
 
