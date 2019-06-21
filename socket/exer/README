@@ -1,3 +1,5 @@
+http://beej.us/guide/bgnet/html/multi/clientserver.html
+
 //get address info.
 //1.if want the program to bind the ip of host, give patam1 to NULL and set AI_PASSIVE. 
 //	and if want a specific port number, give param2 to "xxx"/"http"/... (used for server.)
