@@ -1,0 +1,61 @@
+//get address info.
+//1.if want the program to bind the ip of host, give patam1 to NULL and set AI_PASSIVE. 
+//	and if want a specific port number, give param2 to "xxx"/"http"/... (used for server.)
+//2.if want a specific IP, comment AI_PASSIVE and set param1 to "xx.xx.xx.xx" or "www.xxx.com"
+//	param2 can specific port number, like "xxx"/"http"/...  (used for client).
+int getaddrinfo(	const char *node,		//eg. "www.baidu.com" or IP.
+					const char *service,	//wg. "http" or port-number(in /etc/services)
+					const struct addrinfo *hints,	//addrinfo you have already filled out with relevant information
+					struct addrinfo **res);	//result, a pointer to a linked-list
+
+//everything in UNIX is file, socket is no except!
+//domain specific ipv4/v6, type specific SOCK_STREAM or SOCK_DGRAM, protocol can be 0 to choose proper protocol for type.
+int socket(int domain, int type, int protocol);
+
+//used for program self, bind my ip addr to port number(specific in getaddrinfo)
+int bind(int sockfd, struct sockaddr *myaddr, int addrlen);
+
+
+
+
+
+//used for client to connect to server. if error, return -1 and set errno.
+int connect(int sockfd, struct sockaddr *serv_addr, int addrlen);
+
+//used for server to wait for a incoming connection. if error, return -1 and set errno.
+//	incoming connections are going to wait in a queue util you call accept()
+//	backlog is the limit on how many can queue up.
+int listen(int sockfd, int backlog);
+
+//used for server to accept a incomming connection. return a file descriptor for send()/recv().
+//	origin descriptor is for more new connections.
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+
+//return the numbers actually sent out. and -1 if error. just set flags to 0.
+int send(int sockfd, const void *msg, int len, int flags);
+
+//len is the maxium number of buf. return the number of bytes actually read. -1 if error. just set flags to 0.
+int recv(int sockfd, void *buf, int len, int flags);
+
+
+
+
+//DGRAM-style send, since datagram sockets aren't connected to remote host, we need destination address
+int sendto(int sockfd, const void *msg, int len, unsigned int flags,
+			const struct sockaddr *to, socklen_t tolen);
+
+int recvfrom(int sockfd, void *buf, int len, unsigned int flags,
+			struct sockaddr *from, int *fromlen);
+
+
+
+int close(int sockfd);
+int shutdown(int sockfd, int how);
+
+//tell you who is at the other end of a connected stream socket.
+//	once you get their address, inet_ntop(), getnameinfo(), gethostbyaddr() can be call.
+int getpeername(int sockfd, struct sockaddr *addr, int *addrlen);
+//who am i.
+int gethostname(char *hostname, size_t size);
+
+

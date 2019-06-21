@@ -1,4 +1,4 @@
-MODULE_BIN = main
+MODULE_BIN = server
 
 #MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./*.c))
 MODULE_SRCS = $(shell find . -name "*.c")
