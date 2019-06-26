@@ -1,7 +1,8 @@
 MODULE_BIN = main
 
-#MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./*.c))
-MODULE_SRCS = $(shell find . -name "*.c")
+MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./threaded-server.c))
+MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./util/*.c))
+#MODULE_SRCS = $(shell find . -name "*.c")
 MODULE_OBJS += $(patsubst %.c,%.o ,$(MODULE_SRCS))
 
 CC = gcc

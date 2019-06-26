@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "utils.h"
+#include "util/utils.h"
 
 typedef enum {
 	WAIT_FOR_MSG, 
@@ -28,7 +28,7 @@ void serve_connection(int sockfd) {
 		int len = recv(sockfd, buf, sizeof buf, 0);
 		if (len < 0) {
 			perror_die("recv");
-		} else if (len == 0) {
+		} else if (len == 0) {	//represent connection is closed by client.
 			break;
 		}
 
