@@ -23,8 +23,7 @@ void serve_connection(int sockfd) {
 	}
 
 	ProcessingState state = WAIT_FOR_MSG;
-
-	while (1) {
+	while (1) {	//here simulate blocking
 		uint8_t buf[1024];
 		int len = recv(sockfd, buf, sizeof buf, 0);
 		if (len < 0) {
@@ -55,7 +54,6 @@ void serve_connection(int sockfd) {
 			}
 		}
 	}
-
 	close(sockfd);
 }
 
@@ -74,9 +72,7 @@ int main(int argc, char** argv) {
 		struct sockaddr_in peer_addr;
 		socklen_t peer_addr_len = sizeof(peer_addr);
 
-		int newsockfd =
-			accept(sockfd, (struct sockaddr*)&peer_addr, &peer_addr_len);
-
+		int newsockfd = accept(sockfd, (struct sockaddr*)&peer_addr, &peer_addr_len);
 		if (newsockfd < 0) {
 			perror_die("ERROR on accept");
 		}

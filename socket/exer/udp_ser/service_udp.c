@@ -64,6 +64,7 @@ int main(void)
 	socklen_t addr_len = sizeof their_addr;
 	char buf[MAXBUFLEN];
 	int numbytes;
+	//block here until a packet arrives
 	if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
 		perror("recvfrom");
 		exit(1);

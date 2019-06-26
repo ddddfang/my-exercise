@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 	int sockfd = 0;	//sockfd used for new connections
 	for(p = serinfo; p != NULL; p = p->ai_next){
 		sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);	//make no sense if you only get descriptor....
-		if(sockfd == -1){
+		if(sockfd < 0){
 			fprintf(stderr,"socket error %d\n",sockfd);
 			continue;
 		}
@@ -62,8 +62,9 @@ int main(int argc, char *argv[])
 		//once you have a socket, you may have to associate it with a port on your local machine.
 		//port number is used by the kernel to match an incoming packet to a certain process's socket descriptor.
 		//if you only care about remote port number, this step can be ignored. connect() will do this internal.
-		if(bind(sockfd,p->ai_addr,p->ai_addrlen) == -1){
+		if(bind(sockfd,p->ai_addr,p->ai_addrlen) < 0){
 			fprintf(stderr,"bind error %d\n",sockfd);
+			close(sockfd);
 			continue;
 		}
 		break;
@@ -93,18 +94,64 @@ int main(int argc, char *argv[])
 	}
 
 	printf("server(%s): waiting for connections...\n",ipstr);
+	fd_set master;    // master file descriptor list
+	fd_set read_fds;  // temp file descriptor list for select()
+	FD_ZERO(&master);    // clear the master and temp sets
+	FD_ZERO(&read_fds);
+	FD_SET(sockfd, &master);    // add the listener to the master set
+	int fdmax = sockfd;// so far, it's this one
 	while(1){
-		struct sockaddr_storage their_addr;
-		socklen_t sin_size = sizeof(their_addr);
-		int sock_new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-		if(sock_new_fd == -1){
-			fprintf(stderr,"accept error.\n");
-			continue;
+		read_fds = master; // copy it
+		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1) {
+			perror("select");
+			exit(4);
 		}
-		char s[INET6_ADDRSTRLEN];
-		inet_ntop(their_addr.ss_family,get_in_addr((struct sockaddr *)&their_addr),s,sizeof(s));
-		printf("server(%s): got connection from %s\n",ipstr,s);
+		for(int i=0;i<=fdmax;i++){
+			if(FD_ISSET(i, &read_fds)){	// we got one!
+				if(i == sockfd){
+					//setup a new connection
+					struct sockaddr_storage their_addr;
+					socklen_t sin_size = sizeof(their_addr);
+					int sock_new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);	//accept may cause block.
+					if(sock_new_fd == -1){
+						fprintf(stderr,"accept error.\n");
+						continue;
+					} else {
+						FD_SET(sock_new_fd, &master);    // add the sock_new_fd to the master set
+						if(sock_new_fd > fdmax){	//update fdmax
+							fdmax = sock_new_fd;
+						}
+						char remoteIP[INET6_ADDRSTRLEN];
+						inet_ntop(their_addr.ss_family,get_in_addr((struct sockaddr *)&their_addr),remoteIP,sizeof(remoteIP));
+						printf("server(%s): got connection from %s\n",ipstr,remoteIP);
 
+					}
+				} else {//handle data from a client
+					char buf[256];    // buffer for client data
+					int nbytes;
+					if((nbytes = recv(i,buf,sizeof(buf),0)) <= 0){// got error or connection closed by client
+						if (nbytes == 0) {// connection closed
+							printf("selectserver: socket %d hung up\n", i);
+						} else {
+							perror("recv");
+						}
+						close(i); // bye!
+						FD_CLR(i, &master); // remove from master set
+					} else {// we got some data from a client
+						for(int j = 0; j <= fdmax; j++) {// send to everyone!
+							if (FD_ISSET(j, &master)) {
+								if (j != sockfd && j != i) {// except the listener and ourselves
+									if (send(j, buf, nbytes, 0) == -1) {
+										perror("send");
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+#if 0
 		if(!fork()){
 			//child process.
 			close(sockfd);	//child does not need listener, focus this single thing is enough !
@@ -116,6 +163,7 @@ int main(int argc, char *argv[])
 			exit(0);
 		}
 		close(sock_new_fd);	//parent does not need send()/recv(), so close is just OK.
+#endif
 	}
 	return 0;
 }

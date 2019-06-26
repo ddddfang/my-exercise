@@ -14,7 +14,7 @@
 
 #define PORT	"3490"
 #define MAXDATASIZE	100
-
+#define STDIN	0
 
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -27,7 +27,7 @@ void *get_in_addr(struct sockaddr *sa)
 int main(int argc, char *argv[])
 {
 	if(argc != 2){
-		fprintf(stderr,"usage: ./xxx ip \n");
+		fprintf(stderr,"usage: ./xxx serverip \n");
 		return -1;
 	}
 
@@ -70,14 +70,42 @@ int main(int argc, char *argv[])
 	printf("client: connecting to %s\n",ipstr);
 	freeaddrinfo(serinfo);
 
-	char buf[MAXDATASIZE];
-	int numbytes = 0;
-	if((numbytes = recv(sockfd,buf,MAXDATASIZE-1,0)) == -1){
-		fprintf(stderr,"recv error.\n");
-		return -1;
+	fd_set master;    // master file descriptor list
+	fd_set read_fds;  // temp file descriptor list for select()
+	FD_ZERO(&master);    // clear the master and temp sets
+	FD_ZERO(&read_fds);
+	FD_SET(sockfd, &master);    // add the listener to the master set
+	FD_SET(STDIN, &master);    // add the stdin to the master set
+	int fdmax = sockfd;// so far, it's this one
+
+	while(1){
+		read_fds = master; // copy it
+		if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1) {
+			perror("select");
+			exit(4);
+		}
+		char buf[MAXDATASIZE];
+		int numbytes = 0;
+		for(int i=0;i<=fdmax;i++){
+			if(FD_ISSET(i, &read_fds)){
+				if(i == sockfd){	//server send us a msg, print it
+					if((numbytes = recv(sockfd,buf,MAXDATASIZE-1,0)) == -1){
+						fprintf(stderr,"recv error.\n");
+						return -1;
+					}
+					buf[numbytes] = '\0';
+					printf("%s\n",buf);
+				} else{	//stdin send us a msg, send to server
+					buf[0] = getchar();
+					numbytes = 1;
+					if (send(sockfd, buf, numbytes, 0) == -1) {
+						perror("send");
+					}
+				}
+			}
+		}
 	}
-	buf[numbytes] = '\0';
-	printf("client: received %s\n",buf);
+
 	close(sockfd);
 	return 0;
 }

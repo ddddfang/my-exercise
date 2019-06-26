@@ -51,8 +51,7 @@ int listen_inet_socket(int portnum) {
 		perror_die("ERROR opening socket");
 	}
 
-	// This helps avoid spurious EADDRINUSE when the previous instance of this
-	// server died.
+	// This helps avoid spurious EADDRINUSE when the previous instance of this server died.
 	int opt = 1;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 		perror_die("setsockopt");
@@ -76,7 +75,7 @@ int listen_inet_socket(int portnum) {
 }
 
 void make_socket_non_blocking(int sockfd) {
-	int flags = fcntl(sockfd, F_GETFL, 0);
+	int flags = fcntl(sockfd, F_GETFL, 0);	//get origin file cntl flags.
 	if (flags == -1) {
 		perror_die("fcntl F_GETFL");
 	}
