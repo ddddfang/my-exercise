@@ -6,4 +6,5 @@ server:
 1.sequential-server.c
 2.threaded-server.c
 3.threadpool-server.py
+4.select-server.c
 
