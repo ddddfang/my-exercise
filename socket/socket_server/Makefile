@@ -1,6 +1,6 @@
 MODULE_BIN = main
 
-MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./select-server.c))
+MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./uv-server.c))
 MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./util/*.c))
 #MODULE_SRCS = $(shell find . -name "*.c")
 MODULE_OBJS += $(patsubst %.c,%.o ,$(MODULE_SRCS))
@@ -8,8 +8,12 @@ MODULE_OBJS += $(patsubst %.c,%.o ,$(MODULE_SRCS))
 CC = gcc
 OUT_DIR = .
 PUBLIC_FLAGS:=-g -O0 -Wall -std=gnu99
+
 LDFLAGS = -lm -lz -lpthread
+LDFLAGS += -luv -L/opt/libuv/lib
+
 MODULE_INCLUDE = -I.
+MODULE_INCLUDE += -I/opt/libuv/include
 
 %.o: %.c
 	$(CC) $(PUBLIC_FLAGS) $(MODULE_INCLUDE) -c $< -o $@
