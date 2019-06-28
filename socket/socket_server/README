@@ -4,7 +4,29 @@ client: simple-client.py
 
 server:
 1.sequential-server.c
-2.threaded-server.c
-3.threadpool-server.py
-4.select-server.c
+串行的server,当多个client请求连接的时候同时只能服务一个client
 
+2.threaded-server.c
+改进,每当一个新的client连接请求过来,就创建一个新的thread负责为其服务
+
+3.threadpool-server.py
+threaded-server问题在于,当请求很多的时候,服务器起很多thread,就可能瘫痪了(ddos攻击)
+用一个threadpool来处理这个问题.限制可以同时处理的client的数目
+
+4.select-server.c
+异步编程是说,当read或write需要等待的时候,不要block,直接返回一个状态让调用者知道,
+调用者轮询就行了.当多个文件(普通文件/设备)需要read/write的时候,while大循环挨个轮询,搞定.
+但是最终代码看起来会很丑陋,选择select或epoll来解决.
+select/epoll内部监测文件状态变化,属于异步编程.但是就调用者看来,
+select/epoll本身会导致block,所以也可以说是同步api
+
+
+5.uv-server.c
+libuv就是将while大循环和select/epoll封装起来的异步编程框架!各种操作都通过回调函数搞定.
+有一点需要注意就是,当回调函数中有特别耗时的操作时,将这个处理交给额外的threadpool.
+
+
+
+
+redis内部就是基于异步编程框架实现,只是没有使用libuv,而是自己实现了一个精简版本.
+这种server/client架构的应用好处是,调用者就是client,可以是c.python.js....
