@@ -21,27 +21,28 @@ void selectSort(std::vector<int> &a) {
 }
 
 int main() {
-/*	TestData<int> ta(20);
+    int N=2000;
+/*	TestData<int> ta(N);
 	std::cout << "hello fang." <<std::endl;
 
-	int * p = new int[20];
-	for(int i = 0; i < 20; i++) {
+	int * p = new int[N];
+	for(int i = 0; i < N; i++) {
 		p[i] = (int)(2*i + 1);
 	}
 	ta.readFromBuf(p);
 	ta.show("readFromBuf");
 	ta.generateSequence(2,1);
 	ta.show("generateSequence");
-	ta.generateRandom(-10,10);
+	ta.generateRandom(-100,100);
 	ta.show("generateRandom");
 
 	ta.writeToBuf(p);
-	for(int i = 0; i < 20; i++) {
+	for(int i = 0; i < N; i++) {
 		std::cout << p[i] << " ";
 	}
 	std::cout << std::endl;
 
-	//ta.writeToDisk("./abc.txt");
+	ta.writeToDisk("./abc.txt");
 	ta.readFromDisk("./abc.txt");
 	ta.show("readFromDisk");
 

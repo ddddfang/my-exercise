@@ -209,43 +209,53 @@ void TestData<T>::writeToBuf(std::vector<T> &host) {
 template<typename T>
 int TestData<T>::readFromDisk(std::string filename)
 {
+	std::string tag_size = "size: ";
+	std::string tag_begin = "BEGIN:";
+	std::string tag_end = "END.";
+
 	std::fstream file(filename, std::ios::in);
 	if(file.bad()) {
 		std::cout << "open file " << filename << " fail." << std::endl;
 		return -1;
 	}
 	std::string header1;
-	std::string tag1 = "size: ";
+	std::string header2;
+	std::string tail;
+
 	getline(file, header1);
-	if(header1.find(tag1) == header1.npos) {
+	if(header1.find(tag_size) == header1.npos) {
 		std::cout << "cannot read size from target file." << std::endl;
 		return -1;
 	}
+	getline(file, header2);
+	if(header2 != tag_begin) {
+		std::cout << "Bad tag_begin format." << std::endl;
+		return -1;
+	}
 
-	std::string sSize = header1.substr(header1.find(tag1) + tag1.size());
+	std::string sSize = header1.substr(header1.find(tag_size) + tag_size.size());
 	std::stringstream ssSize(sSize);
 	int size;
 	if(!(ssSize >> size)) {
 		std::cout << "error read size." << std::endl;
 		return -1;
 	} else if (size <= 0) {
-		//std::cout<< "size is " << size << std::endl;
+		std::cout << "bad size." << std::endl;
 		return -1;
 	} else {
 		//std::cout<< "size is " << size << std::endl;
 		std::vector<T> tmpData(size);
-		int cnt = 0;
-		while(file >> tmpData[cnt]) {	//read sth, blank divided.
-			cnt++;
+		for(int cnt = 0; cnt < size; cnt++) {
+			file >> tmpData[cnt];
 		}
-		if(cnt != size) {
-			std::cout << "size("<<size<<") not match with actual data count("<<cnt<<")." << std::endl;
+		file >> tail;
+		//std::cout << "tail is:" << tail << std::endl;
+		if(tail != tag_end) {
+			std::cout << "Bad tag_end format." << std::endl;
 			return -1;
-		} else {
-			std::cout << "total read " << size << " data." << std::endl;
-			reshape(size);
-			tmpData.swap(data_);
 		}
+		reshape(size);
+		tmpData.swap(data_);
 	}
 	return count_;
 }
@@ -253,14 +263,23 @@ int TestData<T>::readFromDisk(std::string filename)
 template<typename T>
 int TestData<T>::writeToDisk(std::string filename)
 {
+	std::string tag_size = "size: ";
+	std::string tag_begin = "BEGIN:";
+	std::string tag_end = "END.";
+
 	std::fstream file(filename, std::ios::out);
 	if(file.bad()) {
 		std::cout << "open file " << filename << " fail." << std::endl;
 		return -1;
 	}
-	file << "size: " << count_ << std::endl;
+
+	file << tag_size << count_ << std::endl;
+	file << tag_begin << std::endl;
+
 	for(int i = 0; i < count_; i++)
 		file << data_[i] <<" ";
+
+	file << std::endl << tag_end;
 	file.close();
 	return 0;
 }
