@@ -21,8 +21,8 @@ void selectSort(std::vector<int> &a) {
 }
 
 int main() {
-    int N=2000;
-/*	TestData<int> ta(N);
+/*    int N=2000;
+	TestData<int> ta(N);
 	std::cout << "hello fang." <<std::endl;
 
 	int * p = new int[N];

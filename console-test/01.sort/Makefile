@@ -2,6 +2,7 @@ MODULE_BIN = out
 
 #MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./*.c))
 MODULE_SRCS = $(shell find . -name "*.cc")
+MODULE_SRCS += $(shell find ../util -name "*.cc")
 MODULE_OBJS += $(patsubst %.cc,%.o ,$(MODULE_SRCS))
 
 CC = g++
@@ -10,7 +11,7 @@ PUBLIC_FLAGS:=-g -O0 -Wall
 
 LDFLAGS = -lm -lz -lpthread  
 #LDFLAGS+= -lSDL2 -lSDL2_image -L/usr/local/lib
-MODULE_INCLUDE = -I.
+MODULE_INCLUDE = -I. -I..
 #MODULE_INCLUDE+= -I/usr/local/include/SDL2
 
 %.o: %.cc
