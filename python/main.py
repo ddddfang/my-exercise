@@ -50,6 +50,17 @@ else:
         f.write("hello %d,%s\n"%(i,time.strftime( "%Y-%m-%d %H:%M:%S" , time.localtime() )))
     f.close()
 
+# When data is sent over the Internet, we need to send it in bytes. The rules for 
+# translating Unicode (which is what Python uses when it stores a string) to bytes is called encoding.
+# encoding=utf-8
+import io
+
+f = io.open("abc.txt", "wt", encoding="utf-8")
+f.write(u"Imagine non-English language here")
+f.close()
+
+text = io.open("abc.txt", encoding="utf-8").read()
+print(text)
 
 
 #######################################pickle模块实现了基本的数据序列和反序列化 可以将对象以文件的形式存放在磁盘上
@@ -65,7 +76,18 @@ pickle.dump(data,pic_file)
 #print(st)
 
 
+#########################################
+def reverse(text):
+    return text[::-1]
 
+def is_palindrome(text):
+    return text == reverse(text)
+
+something = input("Enter text: ")
+if is_palindrome(something):
+    print("Yes, it is a palindrome")
+else:
+    print("No, it is not a palindrome")
 
 
 
