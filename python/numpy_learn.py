@@ -1,3 +1,6 @@
+
+
+
 import numpy as np
 
 #利用 range() 产生一个 list = [0,1,2,...29] 来初始化array
@@ -46,7 +49,10 @@ print(a*b)
 print(np.dot( a,b.reshape(3,2) ))
 
 
-
-
-
+a = np.random.random((1,3))
+b = np.random.random((2,1))
+print(a)
+print(b)
+c = np.greater(a, b)
+print(c)
 
