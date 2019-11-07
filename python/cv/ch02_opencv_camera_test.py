@@ -14,7 +14,10 @@ import numpy as np
 import cv2
 import time
 import os
+import sys
 
+sys.path.append('./')
+import utils   #./utils.py
 print("=============================================")
 print("=  x: 拍摄图片                              =")
 print("=  q: 退出                                  =")
@@ -40,8 +43,9 @@ while cap.isOpened():
     ############################################################
     frame2 = cv2.flip(frame, 1, dst=None)  # 镜像flip
     frame3 = frame[10:10+320, 10:10+240] # crop
-    cv2.imshow("test", frame)
-    cv2.imshow("test2",frame2)
+    frame4 = utils.salt(frame, 500)
+    cv2.imshow("test", frame4)
+    #cv2.imshow("test2",frame2)
 
     ############################################################
 

@@ -54,4 +54,9 @@ cv2.putText(img, text='col=w=X300,row=h=Y100', org=(300, 100), fontFace=font, fo
 cv2.imwrite('img_logo.jpg',img)
 cv2.imshow('img+logo', img)
 cv2.moveWindow('img+logo', x=img.shape[0], y=0)
-cv2.waitKey(0)
+cv2.waitKey(0) #不添最后一句，在IDLE中执行窗口直接无响应。在命令行中执行的话，则是一闪而过
+
+
+cv2.destroyAllWindows()
+
+
