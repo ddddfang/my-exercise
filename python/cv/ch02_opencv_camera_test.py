@@ -24,8 +24,8 @@ print("=  q: 退出                                  =")
 print("=============================================")
 
 #opencv/modules/videoio/src/cap_v4l.cpp (802) open VIDEOIO: V4L: open camera by index 0
-cap = cv2.VideoCapture(0)  # 支持读取摄像头
-#cap = cv2.VideoCapture("./testvideo/Warcraft3_End.avi") # 调用存储的视频
+#cap = cv2.VideoCapture(0)  # 支持读取摄像头
+cap = cv2.VideoCapture("./testvideo/Warcraft3_End.avi") # 调用存储的视频
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -37,15 +37,19 @@ print("fps:", fps)
 index = 0
 while cap.isOpened():
     ret, frame = cap.read()
-    frameIndex = cap.get(cv2.CAP_PROP_POS_FRAMES)  # 第i帧
-    print("frame index ", frameIndex)
+
+    #frameIndex = cap.get(cv2.CAP_PROP_POS_FRAMES)  # 第i帧
+    #print("frame index ", frameIndex)
+    if ret != True:
+        break
 
     ############################################################
     frame2 = cv2.flip(frame, 1, dst=None)  # 镜像flip
     frame3 = frame[10:10+320, 10:10+240] # crop
     frame4 = utils.salt(frame, 500)
+    frame5 = utils.calcAndDrawHist2(frame) #直方图
     cv2.imshow("test", frame4)
-    #cv2.imshow("test2",frame2)
+    cv2.imshow("test5",frame5)
 
     ############################################################
 
