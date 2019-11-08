@@ -2,6 +2,7 @@
 import numpy as np
 import cv2
 
+#给图像加椒盐噪点
 def salt(img, n):
     img_copy = img.copy()
     for k in range(n):
@@ -22,6 +23,7 @@ def salt(img, n):
 #        [256], #HistSize,使用多少个柱子
 #        [0.0, 255.0]) #像素值范围
 
+#返回一个二维图像的直方图图像,使用color颜色绘制
 def calcAndDrawHist(image, color):  
     hist= cv2.calcHist([image], [0], None, [256], [0.0, 255.0]) #计算图像的直方图,hist是一个list或一维数组 
     minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(hist)  #统计最大值和对应的location
@@ -33,6 +35,7 @@ def calcAndDrawHist(image, color):
         cv2.line(histImg, (h,256), (h,256-intensity), color) #画线,(Point.x,Point.y)
     return histImg
 
+#返回一个三维图像的直方图,将其所有通道同时绘制到一张图像上
 def calcAndDrawHist2(image):
     h = np.zeros((256,256,3)) #创建用于绘制直方图的全0图像
     bins = np.arange(256).reshape(256,1) #直方图中各bin的顶点位置
@@ -49,3 +52,22 @@ def calcAndDrawHist2(image):
         cv2.polylines(h, [pts], False, col)  # 将 pts 这个 map 作为(x,y) 画在h上
     h = np.flipud(h) #上下(up/down)翻转这个图像
     return h
+
+#上面两个是opencv版本的直方图,这个是numpy版本的绘制直方图
+def calcAndDrawHist3(image):
+    h = np.zeros((300,256,3))
+    bins = np.arange(257)
+    bin = bins[0:-1]
+    color = [ (255,0,0),(0,255,0),(0,0,255) ]
+
+    for ch,col in enumerate(color):
+        item = image[:,:,ch]
+        N, bins = np.histogram(item, bins) #统计直方图,返回两个数组
+        v = N.max()
+        N = np.int32(np.around((N*255)/v))  #归一化,缩放到(0-255),四舍五入
+        N = N.reshape(256,1)
+        pts = np.column_stack((bin, N))     #按列做拼接
+        cv2.polylines(h, [pts], False, col)
+    h = np.flipud(h)
+    return h
+
