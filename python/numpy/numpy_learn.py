@@ -13,6 +13,8 @@ print("a.dtype=",a.dtype.name)
 print("a.itemSize=",a.itemsize)
 print("a.size=",a.size)#
 
+a = np.linspace(1.0, 5.0, 10, endpoint=False).reshape(2, 5) #在1.0-->5.0 按均匀间隔生成10个点,endpoint 默认为true表示包含5
+print(a)
 a = np.arange(10,30,0.5)    #step=0.5
 print(a)
 
@@ -56,3 +58,14 @@ print(b)
 c = np.greater(a, b)
 print(c)
 
+
+   
+f = np.array([1,2,3])
+g = np.array([4,5,6])
+
+print('水平方向:', np.hstack((f, g)))
+print('竖直方向:', np.vstack((f, g)))
+
+#水平方向: [1 2 3 4 5 6]
+#竖直方向: [[1 2 3]
+#          [4 5 6]]
