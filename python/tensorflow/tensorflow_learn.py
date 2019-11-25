@@ -1,3 +1,5 @@
+# https://blog.csdn.net/javastart/article/details/102525102
+
 import numpy as np
 #import tensorflow as tf
 
@@ -31,8 +33,8 @@ filter_data = filter_data.astype(np.float32)
 
 input_tensor = tf.constant(input_data, dtype=tf.float32)
 filter_tensor = tf.constant(filter_data, dtype=tf.float32)
-#output_tensor = tf.nn.conv2d(input_tensor, filter_tensor, strides=[1,2,2,1], padding="SAME")
-output_tensor = tf.nn.conv2d(input_tensor, filter_tensor, strides=[1,2,2,1], padding="SAME",dilations=[1,2,2,1])
+output_tensor = tf.nn.conv2d(input_tensor, filter_tensor, strides=[1,2,2,1], padding="SAME")
+#output_tensor = tf.nn.conv2d(input_tensor, filter_tensor, strides=[1,2,2,1], padding="SAME",dilations=[1,2,2,1])
 #print(input_tensor)
 #print(filter_tensor)
 #print(output_tensor)
