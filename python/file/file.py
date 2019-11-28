@@ -83,6 +83,7 @@ rows = [
     [2,'xiaoli','male',158,21]
 ]
 
+#这个字典组成的list应该可以通过插入 dict(zip(headers,rows[i]))完成
 #rows_dict = [
 #    {'class':1,'name':'xiaoming','sex':'male','height':168,'year':23},
 #    {'class':1,'name':'xiaohong','sex':'female','height':162,'year':22},

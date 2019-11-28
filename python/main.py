@@ -3,6 +3,13 @@ if __name__ == "__main__":
 else:
     print("I am being imported from another module")
 
+i = 2
+print(i,id(i))
+for i in range(0,10):
+    print(i)
+print(i,id(i))
+
+
 l = ["hello","this","is","a","test"]
 print(" ".join(l))
 
