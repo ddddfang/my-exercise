@@ -58,6 +58,7 @@ def write_file(filename, lines):
 
 def read_csv(filename):
     with open(filename) as f:
+    #with open(filename,"rt",encoding="gbk") as f:
         f_csv = csv.reader(f)
         result = []
         for row in f_csv:
