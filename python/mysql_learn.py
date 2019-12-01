@@ -3,6 +3,10 @@
 # sudo docker run --name first-mysql -p 3307:3306 -e MYSQL_ROOT_PASSWORD=123456 -d mysql 
 # 然后在 localhost:3307 应该就有 sql 服务了.
 
+# 方便起见:可以在 ubuntu 上安装 mysql-client: sudo apt-get install mysql-client
+# 然后在确保 docker(mysql) 运行的前提下: mysql -h127.0.0.1 -P3307 -uroot -p123456 即可登录
+# mysql的命令行客户端.
+
 import pymysql
 
 #db = pymysql.connect(host='localhost', port=3307, user="root", password="123456", charset="utf8mb4")
