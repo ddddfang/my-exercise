@@ -1,0 +1,62 @@
+sql 语句:
+1.数据定义类语句(DDL):
+	create drop alter
+2.数据操纵类语句(DML)
+	增删查改 insert delete select update
+3.数据控制类语句(DCL)
+	grant revoke
+这些语句都要以 ; 结尾 !
+
+
+show databases;//查看系统中都存在哪些数据库
+	information_schma	//系统预留的数据库
+	performance_schma	//系统预留的数据库
+	mysql				//系统预留的数据库,存储了 数据库、表、列、用户、权限 等信息
+	sys					//系统预留的数据库
+create database db_name;	//创建数据库.若已经存在,则sql会报错
+drop database db_name;		//删除一个数据库
+use db_name;			//对某个数据库进行增删查改前,必须要先打开此数据库
+
+show tables;		//显示某数据库下已经存在了的所有数据表,关于 show 的其他用法可以 help show;
+desc table_name;	//查看某个表的定义,等价于 describe table_name; 或 show columns from table_name;
+					//返回 表的每一个字段的 "名字 类型 可否为null 键信息 默认值 其他信息(eg.auto_increment)"
+
+create table if not exists `table_name` (	//一般表名与字段名都使用反引号, 但貌似也有啥也不用的?
+	`id` int unsigned not null auto_increment,	//not null 表示在插入或更新时 该列必须有值,""也算是有值的!,每个表只可以有一个 auto_increment 列
+	`name` char(40) not null,					//允许null值的列允许在插入该行时不给出该列的值
+	`ip address` bigint(20) default null,		//default 指定默认值,指定 not null 时候貌似可以指定一个 default 值
+	`introduction` varchar(200) default null,
+	`age` int not null,
+	`grade` decimal(8,2) not null,	//十进制数字,整数部分占8位,小数部分占2位,其实就是一个浮点数了
+	`born_date` DATE,
+	primary key ( `id` )	//primary key(`k1`, `k2`)	//这是使用组合键
+) engine=InnoDB default charset=utf8;
+drop table table_name;
+//主键使用单个列,则此列值必须唯一. 若主键使用多个列的组合,则这些列的组合值必须唯一
+
+//插入数据
+insert into table_name values(val1,val2,val3,...);
+insert into table_name (column1,column2,column3,...) values(val1,val2,val3,...);
+
+
+//查找数据,返回结果是无序的,也没有过滤
+select column_name(s)	//只返回某一列,选择多个列则列之间以逗号隔开,返回所有列可以 select *
+from table_name;
+
+select DISTINCT column_name(s)	//当选择返回某一列的时候,很可能多个结果此列值相同,DISTINCT 保证只显示不同的值
+from table_name;
+
+select top 10 column_name(s)	//按 column_name 排序并选择前10个, select top 10% 则选择前10%
+from table_name;
+
+//从表中选择某一列或某几列,并按照 column_name 的升序/降序返回
+select column_name(s)
+from table_name
+order by column_name [asc|desc];
+
+select column_name(s)
+from table_name
+where column_name like pattern;	//选择 列名字 符合正则表达式 的那一行
+
+
+
