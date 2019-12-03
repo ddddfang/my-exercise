@@ -108,6 +108,17 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
 #data = cursor.fetchone()
 #print ("Database version : {}".format(data))
 
+cmd = "select * from {} order by owner limit 50".format(table_name)
+cursor.execute(cmd)
+
+data = cursor.fetchone()    # 返回元组
+print(type(data), data)
+
+data = cursor.fetchmany(3)  # 返回元组的元组
+print(type(data), data)
+
+data = cursor.fetchall()    # 返回元组的元组
+print(type(data), data)
 
 
 cursor.close()
