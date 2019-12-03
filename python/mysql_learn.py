@@ -41,25 +41,72 @@ db = pymysql.connect(
     user = config["user"],
     password = config["password"],
     charset = config["charset"],
-    db = config["database"]
+    db = config["database"] #这相当于 use database; 了
 )
 
 cursor = db.cursor()
+
+table_name = "table_zx"
+# drop table
+cmd = "drop table if exists {}".format(table_name)
+cursor.execute(cmd)
+
+# create table
 cmd = '''
 create table if not exists `{}` (
    `id` int unsigned not null auto_increment,
    `product_name` char(40) not null,
-   `product_id` int not null,
+   `product_id` varchar(20) not null,
    `number` int default 1,
    `owner` varchar(40) not null,
    primary key (`id`)
 ) engine=InnoDB default charset={};
-'''.format("table_zx",config["charset"])
+'''.format(table_name, config["charset"])
 cursor.execute(cmd)
 
-cursor.execute("SELECT VERSION()")
-data = cursor.fetchone()
-print ("Database version : {}".format(data))
+
+files = glob.glob("/home/fang/桌面/*.xlsx")
+print(files)
+
+#read
+with pd.ExcelFile(files[0]) as ef: # 带有解析操作
+    for sh in ef.sheet_names:
+        df = pd.read_excel(ef, sh)
+        #data = df           # 所有数据, pandas.core.frame.DataFrame 格式
+        data = df.values    # 返回一个 numpy.ndarray
+        #print("excel data({0}){1} :{2}.".format(type(data), data.shape, data))
+
+        lines = df.index.values
+        #print(lines)
+        for line in lines:
+            d = df.iloc[line, :].values
+            #print("line{} is {},{},{},{}".format(line, d[0], d[1], d[2], d[3]))
+
+            cmd = '''
+                insert into {} (`product_name`, `product_id`, `number`, `owner`) 
+                values("{}", "{}", "{}", "{}")
+            '''.format(table_name, d[0], d[1], d[2], d[3])
+            #print(cmd)
+            cursor.execute(cmd)
+
+            # error example ......
+            #cmd = "insert into {} (%s) values(%s)".format(table_name)   #sql会自动给 %s 字段加 ''
+            ##print(cmd)
+            #header = ",".join(["`product_name`", "`product_id`", "`number`", "`owner`"])
+            #row = ",".join(['"{}"'.format(d[0]), '"{}"'.format(d[1]), '"{}"'.format(d[2]), '"{}"'.format(d[3])])
+            #print(header)
+            #print(row)
+            #cursor.execute(cmd, [header, row])
+
+            #print(cursor.lastrowid)
+
+            #if line > 10:
+            #    break
+        db.commit() # 想让 insert 生效 必须加上 commit
+
+#cursor.execute("SELECT VERSION()")
+#data = cursor.fetchone()
+#print ("Database version : {}".format(data))
 
 
 
@@ -68,26 +115,6 @@ db.close()
 
 
 
-def demo1():    # read and write xlsx
-    files = glob.glob("/home/fang/桌面/*.xlsx")
-    print(files)
-
-    #read
-    with pd.ExcelFile(files[0]) as ef: # 带有解析操作
-        for sh in ef.sheet_names:
-            df = pd.read_excel(ef, sh)
-            #data = df           # 所有数据, pandas.core.frame.DataFrame 格式
-            data = df.values    # 返回一个 numpy.ndarray
-            print("excel data({0}){1} :{2}.".format(type(data), data.shape, data))
-
-            lines = df.index.values
-            print(lines)
-
-            ##data = df.ix[10].values    #读取第10行的内容
-            ##data = df.iloc[10:12].values    #读取第[10,12)行内容
-            #data = df.iloc[10:12, 0:2].values    #读取第[10,12)行,[0,2)列内容
-            #print("line10 is {}{}".format(type(data), data))
-
 
 if __name__ == "__main__":
-    demo1()
+    pass
