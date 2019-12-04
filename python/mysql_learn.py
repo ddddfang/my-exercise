@@ -7,6 +7,9 @@
 # 然后在确保 docker(mysql) 运行的前提下: mysql -h127.0.0.1 -P3307 -uroot -p123456 即可登录
 # mysql的命令行客户端.
 
+
+# 关于pymysql基本数据的测试: https://github.com/PyMySQL/PyMySQL/blob/master/pymysql/tests/test_basic.py
+
 import pymysql
 import glob
 import pandas as pd
@@ -44,7 +47,7 @@ db = pymysql.connect(
     db = config["database"] #这相当于 use database; 了
 )
 
-cursor = db.cursor()
+cursor = db.cursor()    # 获取操纵数据库的指针
 
 table_name = "table_zx"
 # drop table
@@ -82,21 +85,26 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
             d = df.iloc[line, :].values
             #print("line{} is {},{},{},{}".format(line, d[0], d[1], d[2], d[3]))
 
-            cmd = '''
-                insert into {} (`product_name`, `product_id`, `number`, `owner`) 
-                values("{}", "{}", "{}", "{}")
-            '''.format(table_name, d[0], d[1], d[2], d[3])
-            #print(cmd)
-            cursor.execute(cmd)
-
-            # error example ......
-            #cmd = "insert into {} (%s) values(%s)".format(table_name)   #sql会自动给 %s 字段加 ''
+            ##方式1
+            #cmd = '''
+            #    insert into {} (`product_name`, `product_id`, `number`, `owner`) 
+            #    values("{}", "{}", "{}", "{}")
+            #'''.format(table_name, d[0], d[1], d[2], d[3])
             ##print(cmd)
-            #header = ",".join(["`product_name`", "`product_id`", "`number`", "`owner`"])
-            #row = ",".join(['"{}"'.format(d[0]), '"{}"'.format(d[1]), '"{}"'.format(d[2]), '"{}"'.format(d[3])])
-            #print(header)
-            #print(row)
-            #cursor.execute(cmd, [header, row])
+            #cursor.execute(cmd)
+
+            #方式2
+            cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name)   #sql会自动给 %s 字段加 ''
+            # 传这个v的话,需要使用 executemany(cmd,v)
+            #v = [ 
+            #    ('x','y','z','w')
+            #    ('x','y','z','w')
+            #    ('x','y','z','w')
+            #    ('x','y','z','w')
+            #    ('x','y','z','w')
+            #]
+            v = tuple(map(str,list(d)))    #将d(ndarray)搞成转为list,然后吧list中每一个值转成str,再组织成tuple
+            cursor.execute(cmd, v)
 
             #print(cursor.lastrowid)
 
@@ -108,7 +116,8 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
 #data = cursor.fetchone()
 #print ("Database version : {}".format(data))
 
-cmd = "select * from {} order by owner limit 50".format(table_name)
+
+cmd = "select * from {} order by id limit 30".format(table_name)
 cursor.execute(cmd)
 
 data = cursor.fetchone()    # 返回元组
@@ -117,10 +126,18 @@ print(type(data), data)
 data = cursor.fetchmany(3)  # 返回元组的元组
 print(type(data), data)
 
+cursor.scroll(1, mode="absolute")   #光标定位到 offset=1 处
+cursor.scroll(-1, mode="relative")   #光标向下(正数)偏移,或向上(负数)偏移
 data = cursor.fetchall()    # 返回元组的元组
 print(type(data), data)
 
+cursorDict = db.cursor(cursor=pymysql.cursors.DictCursor)   #获取操纵数据库的指针,插入和查询应该都是字典类型
+cursorDict.execute(cmd)
+data = cursorDict.fetchmany(3)  # 返回字段组成的列表
+print(type(data), data)
 
+
+cursorDict.close()
 cursor.close()
 db.close()
 
