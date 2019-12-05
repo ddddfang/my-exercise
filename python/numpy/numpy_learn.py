@@ -6,12 +6,18 @@ import numpy as np
 #利用 range() 产生一个 list = [0,1,2,...29] 来初始化array
 #a = np.arange(30,dtype=np.int16).reshape(2, 3, 5)
 a = np.arange(30).reshape(2, 3, 5)
-print("a=",a)
+print("a{}={}".format(type(a),a))
 print("a.dim=",a.ndim)
 print("a.shape=",a.shape)
 print("a.dtype=",a.dtype.name)
 print("a.itemSize=",a.itemsize)
 print("a.size=",a.size)#
+
+#对于二维ndarry,强制转换为 list 将得到 list 组成的 list
+a = np.arange(30).reshape(6, 5)
+print("a({},{})=\n{}".format(type(a),a.shape,a))
+li_a = list(a)  #li_a = a.tolist()
+print("li_a({})=\n{}".format(type(li_a),a))
 
 a = np.linspace(1.0, 5.0, 10, endpoint=False).reshape(2, 5) #在1.0-->5.0 按均匀间隔生成10个点,endpoint 默认为true表示包含5
 print(a)

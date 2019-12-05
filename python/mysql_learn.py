@@ -79,6 +79,7 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
         data = df.values    # 返回一个 numpy.ndarray
         #print("excel data({0}){1} :{2}.".format(type(data), data.shape, data))
 
+        #使用单行插入的方式
         lines = df.index.values
         #print(lines)
         for line in lines:
@@ -95,14 +96,6 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
 
             #方式2
             cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name)   #sql会自动给 %s 字段加 ''
-            # 传这个v的话,需要使用 executemany(cmd,v)
-            #v = [ 
-            #    ('x','y','z','w')
-            #    ('x','y','z','w')
-            #    ('x','y','z','w')
-            #    ('x','y','z','w')
-            #    ('x','y','z','w')
-            #]
             v = tuple(map(str,list(d)))    #将d(ndarray)搞成转为list,然后吧list中每一个值转成str,再组织成tuple
             cursor.execute(cmd, v)
 
@@ -110,6 +103,20 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
 
             #if line > 10:
             #    break
+
+        ##直接将多行数据转换为 list[list] 然后插入
+        #cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name)   #sql会自动给 %s 字段加 ''
+        ##v = [ 
+        ##    ('x','y','z','w') #这里是元祖或list都是可以的
+        ##    ('x','y','z','w')
+        ##    ('x','y','z','w')
+        ##    ('x','y','z','w')
+        ##    ('x','y','z','w')
+        ##]
+        #list_lines = list(data)    # 二维ndarray强制转换为list组成的list
+        ##print(list_lines)
+        #v = [ tuple(map(str,i)) for i in list_lines]  # 对每一个内层 list 做 tuple(map(str,list(d))) 处理
+        #cursor.executemany(cmd,v)
         db.commit() # 想让 insert 生效 必须加上 commit
 
 #cursor.execute("SELECT VERSION()")
