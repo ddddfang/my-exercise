@@ -67,6 +67,25 @@ create table if not exists `{}` (
 '''.format(table_name, config["charset"])
 cursor.execute(cmd)
 
+cmd = '''
+create table `usr_info` (
+    `id` int unsigned not null auto_increment comment '主键',
+    `name` varchar(20) default null comment '姓名',
+    `mobile` char(11) default null comment '手机号码',
+    `address` varchar(100) default null comment '住址',
+    `description` text comment '个人简介',
+    `sex` char(1) default null comment '性别',
+    `age` tinyint(1) default null comment '年龄',
+    `idno` char(18) default null comment '身份证号码',
+    `image` blob comment '照片',
+    `recordtime` datetime comment '记录时间',
+    primary key (`id`),
+    unique key `person` (`mobile`),
+    unique key `idcard` (`idno`),
+    key `telephone` (`mobile`)
+) engine=InnoDB auto_increment=2 default charset={};
+'''.format(config["charset"])
+cursor.execute(cmd)
 
 files = glob.glob("/home/fang/桌面/*.xlsx")
 print(files)
