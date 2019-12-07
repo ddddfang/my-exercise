@@ -10,6 +10,10 @@
 
 # 关于pymysql基本数据的测试: https://github.com/PyMySQL/PyMySQL/blob/master/pymysql/tests/test_basic.py
 
+
+# 这个脚本: 读取excel并将其中的内容写入 test_db.table_zx 中
+# 完成后 从数据库中检索数据,作为数据库操作的基本sample
+
 import pymysql
 import glob
 import pandas as pd
@@ -49,10 +53,18 @@ db = pymysql.connect(
 
 cursor = db.cursor()    # 获取操纵数据库的指针
 
-table_name = "table_zx"
-# drop table
-cmd = "drop table if exists {}".format(table_name)
+#================= drop and re-create table in database  ===============
+table_name1 = "table_zx"
+table_name2 = "usr_info"
+
+# drop table1 and table2
+cmd = "drop table if exists `{}`".format(table_name1)
 cursor.execute(cmd)
+db.commit() # 想让 insert 生效 必须加上 commit
+
+cmd = "drop table if exists `{}`".format(table_name2)
+cursor.execute(cmd)
+db.commit() # 想让 insert 生效 必须加上 commit
 
 # create table
 cmd = '''
@@ -64,11 +76,11 @@ create table if not exists `{}` (
    `owner` varchar(40) not null,
    primary key (`id`)
 ) engine=InnoDB default charset={};
-'''.format(table_name, config["charset"])
+'''.format(table_name1, config["charset"])
 cursor.execute(cmd)
 
 cmd = '''
-create table `usr_info` (
+create table if not exists `{}` (
     `id` int unsigned not null auto_increment comment '主键',
     `name` varchar(20) default null comment '姓名',
     `mobile` char(11) default null comment '手机号码',
@@ -84,7 +96,7 @@ create table `usr_info` (
     unique key `idcard` (`idno`),
     key `telephone` (`mobile`)
 ) engine=InnoDB auto_increment=2 default charset={};
-'''.format(config["charset"])
+'''.format(table_name2, config["charset"])
 cursor.execute(cmd)
 
 files = glob.glob("/home/fang/桌面/*.xlsx")
@@ -109,12 +121,12 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
             #cmd = '''
             #    insert into {} (`product_name`, `product_id`, `number`, `owner`) 
             #    values("{}", "{}", "{}", "{}")
-            #'''.format(table_name, d[0], d[1], d[2], d[3])
+            #'''.format(table_name1, d[0], d[1], d[2], d[3])
             ##print(cmd)
             #cursor.execute(cmd)
 
             #方式2
-            cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name)   #sql会自动给 %s 字段加 ''
+            cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name1)   #sql会自动给 %s 字段加 ''
             v = tuple(map(str,list(d)))    #将d(ndarray)搞成转为list,然后吧list中每一个值转成str,再组织成tuple
             cursor.execute(cmd, v)
 
@@ -124,7 +136,7 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
             #    break
 
         ##直接将多行数据转换为 list[list] 然后插入
-        #cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name)   #sql会自动给 %s 字段加 ''
+        #cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name1)   #sql会自动给 %s 字段加 ''
         ##v = [ 
         ##    ('x','y','z','w') #这里是元祖或list都是可以的
         ##    ('x','y','z','w')
@@ -143,7 +155,7 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
 #print ("Database version : {}".format(data))
 
 
-cmd = "select * from {} order by id limit 30".format(table_name)
+cmd = "select * from {} order by id limit 30".format(table_name1)
 cursor.execute(cmd)
 
 data = cursor.fetchone()    # 返回元组
