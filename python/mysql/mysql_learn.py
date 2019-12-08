@@ -52,13 +52,14 @@ db = pymysql.connect(
 )
 
 cursor = db.cursor()    # 获取操纵数据库的指针
+#db.select_db('gloryroad') # 不加这句话默认就是 test_db 数据库,加上的话就是选择其他数据库 use gloryroad;
 
 #================= drop and re-create table in database  ===============
-table_name1 = "table_zx"
+table_name = "table_zx"
 table_name2 = "usr_info"
 
 # drop table1 and table2
-cmd = "drop table if exists `{}`".format(table_name1)
+cmd = "drop table if exists `{}`".format(table_name)
 cursor.execute(cmd)
 db.commit() # 想让 insert 生效 必须加上 commit
 
@@ -76,7 +77,7 @@ create table if not exists `{}` (
    `owner` varchar(40) not null,
    primary key (`id`)
 ) engine=InnoDB default charset={};
-'''.format(table_name1, config["charset"])
+'''.format(table_name, config["charset"])
 cursor.execute(cmd)
 
 cmd = '''
@@ -121,12 +122,12 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
             #cmd = '''
             #    insert into {} (`product_name`, `product_id`, `number`, `owner`) 
             #    values("{}", "{}", "{}", "{}")
-            #'''.format(table_name1, d[0], d[1], d[2], d[3])
+            #'''.format(table_name, d[0], d[1], d[2], d[3])
             ##print(cmd)
             #cursor.execute(cmd)
 
             #方式2
-            cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name1)   #sql会自动给 %s 字段加 ''
+            cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name)   #sql会自动给 %s 字段加 ''
             v = tuple(map(str,list(d)))    #将d(ndarray)搞成转为list,然后吧list中每一个值转成str,再组织成tuple
             cursor.execute(cmd, v)
 
@@ -136,7 +137,7 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
             #    break
 
         ##直接将多行数据转换为 list[list] 然后插入
-        #cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name1)   #sql会自动给 %s 字段加 ''
+        #cmd = "insert into {} (`product_name`,`product_id`,`number`,`owner`) values (%s, %s, %s, %s)".format(table_name)   #sql会自动给 %s 字段加 ''
         ##v = [ 
         ##    ('x','y','z','w') #这里是元祖或list都是可以的
         ##    ('x','y','z','w')
@@ -155,7 +156,7 @@ with pd.ExcelFile(files[0]) as ef: # 带有解析操作
 #print ("Database version : {}".format(data))
 
 
-cmd = "select * from {} order by id limit 30".format(table_name1)
+cmd = "select * from {} order by id limit 30".format(table_name)
 cursor.execute(cmd)
 
 data = cursor.fetchone()    # 返回元组
