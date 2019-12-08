@@ -111,6 +111,7 @@ import pandas as pd
 
 #############################################################################################################
 
+# 获取某一路径下指定后缀的文件,并调用上面的 read_file 读取内容
 def demo1(): # get_filename and read_file
     filetype = [".py",".txt"]
     rootdir = "/home/fang/codes/tmp/my-exercise/"
@@ -125,6 +126,7 @@ def demo1(): # get_filename and read_file
             print("show line {}:{}".format(i, l), end='')
         print("done.")
 
+# 调用 write_csv read_csv read_csv_dict write_csv_dict 读写 csv 文件
 def demo2():    # write_csv and write_csv_dict and read_csv
     write_csv("test.csv", headers, rows)
     abc = read_csv("test.csv")
@@ -144,6 +146,7 @@ def demo2():    # write_csv and write_csv_dict and read_csv
     write_csv_dict("test2.csv",abc[0],rows_dict)
 
 # https://www.cnblogs.com/liulinghua90/p/9935642.html
+# 利用 pandas 读写 excel 文件
 def demo3():    # read and write xlsx
     files = glob.glob("/home/fang/桌面/*.xlsx")
     print(files)
