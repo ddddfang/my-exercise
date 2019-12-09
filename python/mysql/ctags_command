@@ -1,0 +1,11 @@
+#可否实现一个project解析,类似 source insight 将定义和引用parse出来
+# http://ctags.sourceforge.net/ctags.html
+
+# ctags -R --fields=+n+m+K zxnn_lib/app_c/zxnn_sample_c.h
+
+# 一个交互式 ap
+# id, func_name, 定义的地方(所在文件:所在行), 声明的地方(所在文件:所在行), 函数具体实现内容, 引用本函数的地方
+
+
+# 一个结构体定义在何处,哪里引用了此结构体
+
