@@ -9,3 +9,20 @@
 
 # 一个结构体定义在何处,哪里引用了此结构体
 
+
+# ctag 工作完成后,插入到db方便保存,工作时候需要读取db到dict,不然可能会慢
+
+
+# 语法高亮
+#   根据ctags检测出来的是 func/struct/...来, 还要有一个集合,eg. for if int 等语法关键字
+#   需要高亮的包括: 系统内置关键词 (for if int define ...) + struct + func + enum + ...
+# 左侧目录树
+#   列出文件的函数和struct,双击能跳转过去?
+# 查找
+#   文件中的查找和project范围的查找
+# 上下文
+#   每输入一些单词,能匹配查找(select * where xx like xx)相似的目标, 在一个单独的窗口显示
+
+
+
+
