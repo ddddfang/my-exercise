@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import (QWidget, QToolTip, QPushButton, QApplication, QMessageBox, QDesktopWidget, QMainWindow, QAction, qApp)
+from PyQt5.QtWidgets import (QWidget, QToolTip, QPushButton, QApplication, QMessageBox, QDesktopWidget, QMainWindow, QAction, qApp, QMenu)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtGui import QFont
 
@@ -9,33 +9,33 @@ class example(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        QToolTip.setFont(QFont('SansSerif', 10))
-        self.setToolTip('This is a <b>QMainWindow</b> widget')
+        self.statusbar = self.statusBar()
+        self.statusbar.showMessage('Ready')
 
-        exitAct = QAction(QIcon('icons/exit.png'), '&Exit', self)   # 单纯的定义了一个动作
-        exitAct.setShortcut('Ctrl+Q')
-        exitAct.setStatusTip('Exit application')
-        exitAct.triggered.connect(qApp.quit)
+        actImp = QAction('Import mail', self) 
+        actNew = QAction('New', self)
+
+        menuImp = QMenu('Import', self)     # 创建菜单
+        menuImp.addAction(actImp)           # 为菜单添加其下的操作
+
+        menubar = self.menuBar()    # 创建菜单栏
+        fileMenu = menubar.addMenu('File')  # 创建一级菜单
+        fileMenu.addAction(actNew)          # 为一级菜单添加其下的操作
+        fileMenu.addMenu(menuImp)           # 为一级菜单添加其下的子菜单
+        editMenu = menubar.addMenu('Edit')  # 创建一级菜单
 
         btn = QPushButton('Button', self)
-        btn.clicked.connect(QApplication.instance().quit)
-        btn.setToolTip('This is a <b>QPushButton</b> widget')
+        #btn.clicked.connect(QApplication.instance().quit)
+        btn.clicked.connect(self.say_hello)
         btn.resize(btn.sizeHint())
         btn.move(50, 50)
-
-        #self.statusBar().showMessage('Ready')
-        self.statusBar()
-
-        menubar = self.menuBar()
-        fileMenu = menubar.addMenu('&File') # 添加一个菜单
-        fileMenu.addAction(exitAct)         # 添加一个动作
 
 
         #self.setGeometry(300, 300, 300, 220)
         self.resize(300, 220)
         self.center()
 
-        self.setWindowTitle('demo02')
+        self.setWindowTitle('demo03')
         self.setWindowIcon(QIcon('res/simple.png'))
         self.show()
 
@@ -47,6 +47,9 @@ class example(QMainWindow):
             event.accept()
         else:
             event.ignore()
+
+    def say_hello(self):
+        print ("hello")
 
     def center(self):
 
