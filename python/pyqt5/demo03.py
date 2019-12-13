@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import (QWidget, QToolTip, QPushButton, QApplication, QMessageBox, QDesktopWidget, QMainWindow, QAction, qApp, QMenu)
+from PyQt5.QtWidgets import (QWidget, QToolTip, QPushButton, QApplication, QMessageBox, QDesktopWidget, QMainWindow, QAction, qApp, QMenu, QTextEdit)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtGui import QFont
 
@@ -9,26 +9,49 @@ class example(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        self.statusbar = self.statusBar()
-        self.statusbar.showMessage('Ready')
 
+        # actions
         actImp = QAction('Import mail', self) 
         actNew = QAction('New', self)
+        actExit = QAction(QIcon('res/exit.png'), 'Exit', self)
+        actExit.setShortcut('Ctrl+Q')
+        actExit.triggered.connect(qApp.quit)
 
+        actViewStat = QAction('View statusbar', self, checkable=True)
+        actViewStat.setChecked(True)
+        actViewStat.setStatusTip('View statusbar')
+        actViewStat.triggered.connect(self.toggleMenu)
+
+        # sub menus
         menuImp = QMenu('Import', self)     # 创建菜单
         menuImp.addAction(actImp)           # 为菜单添加其下的操作
 
+        #################### 菜单栏 #########
         menubar = self.menuBar()    # 创建菜单栏
+        ####
         fileMenu = menubar.addMenu('File')  # 创建一级菜单
         fileMenu.addAction(actNew)          # 为一级菜单添加其下的操作
         fileMenu.addMenu(menuImp)           # 为一级菜单添加其下的子菜单
-        editMenu = menubar.addMenu('Edit')  # 创建一级菜单
+        ####
+        viewMenu = menubar.addMenu('View')  # 创建一级菜单
+        viewMenu.addAction(actViewStat)
 
-        btn = QPushButton('Button', self)
-        #btn.clicked.connect(QApplication.instance().quit)
-        btn.clicked.connect(self.say_hello)
-        btn.resize(btn.sizeHint())
-        btn.move(50, 50)
+        #################### 工具栏 #########
+        self.toolbar = self.addToolBar('Exit')
+        self.toolbar.addAction(actExit)
+
+        #################### 状态栏 #########
+        self.statusbar = self.statusBar()
+        #self.statusbar.showMessage('Ready')
+
+        #btn = QPushButton('Button', self)
+        ##btn.clicked.connect(QApplication.instance().quit)
+        #btn.clicked.connect(self.say_hello)
+        #btn.resize(btn.sizeHint())
+        #btn.move(50, 50)
+
+        textEdit = QTextEdit()
+        self.setCentralWidget(textEdit) # central widget 会占据除了菜单栏,工具栏,状态栏之外的所有空间
 
 
         #self.setGeometry(300, 300, 300, 220)
@@ -39,7 +62,7 @@ class example(QMainWindow):
         self.setWindowIcon(QIcon('res/simple.png'))
         self.show()
 
-    # closeEvent() 是 QWidget 定义的函数,这里我们重新实现它
+    # override closeEvent()
     def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Message', "Are you sure to quit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
@@ -48,11 +71,33 @@ class example(QMainWindow):
         else:
             event.ignore()
 
+    # override contextMenuEvent() # 右键的时候会弹出 contextMenu
+    def contextMenuEvent(self, event):
+        cmenu = QMenu(self)
+
+        actNew = cmenu.addAction("New")
+        actOpen = cmenu.addAction("Open")
+        actQuit = cmenu.addAction("Quit")
+
+        action = cmenu.exec_(self.mapToGlobal(event.pos()))
+        if action == actQuit:
+            print("ctx menu: actQuit.")
+            #qApp.quit()
+        elif action == actNew:
+            print("ctx menu: actNew.")
+        elif action == actOpen:
+            print("ctx menu: actOpen.")
+
     def say_hello(self):
         print ("hello")
 
-    def center(self):
+    def toggleMenu(self, state):
+        if state:
+            self.statusbar.show()
+        else:
+            self.statusbar.hide()
 
+    def center(self):
         qr = self.frameGeometry()   # get a rectangle specifying the geometry of the main window, includes any window frame
         cp = QDesktopWidget().availableGeometry().center()  # get the center point.
         qr.moveCenter(cp)           # set the center of the rectangle to the center of the screen. The rectangle's size is unchanged.
