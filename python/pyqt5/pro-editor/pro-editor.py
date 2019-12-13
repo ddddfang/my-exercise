@@ -71,9 +71,12 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
     def initUI(self):
 
         self.text = QtWidgets.QTextEdit(self)
-        self.text.setTabStopWidth(33)   # Set the tab stop width to around 33 pixels
-        self.text.setFont(QtGui.QFont("Menlo",12))
+        
+        #self.text.setFont(QtGui.QFont("Menlo",12))
+        me = QtGui.QFontMetrics(self.text.font())
+        self.text.setTabStopWidth(4 * me.width(" "))   # 设置 tab 键宽度为 4 空格
         self.setCentralWidget(self.text)
+        self.text.cursorPositionChanged.connect(self.cursorPosChanged)
 
         self.initToolbar()
         self.initFormatbar()
@@ -88,7 +91,7 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         self.setWindowIcon(QtGui.QIcon('res/simple.png')) # 我这里写的是相对路径,所以对运行时候的位置是有要求的,这个 icon 竟然跑到 ubuntu 的左边栏了...
 
     def initToolbar(self):
-        
+ 
         self.newAction = QtWidgets.QAction(QtGui.QIcon("icons/new.png"),"New",self)
         self.newAction.setShortcut("Ctrl+N")
         self.newAction.setStatusTip("Create a new document from scratch.")
@@ -136,7 +139,6 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         self.redoAction.triggered.connect(self.text.redo)
 
         self.toolbar = self.addToolBar("Options")
-
         self.toolbar.addAction(self.newAction)
         self.toolbar.addAction(self.openAction)
         self.toolbar.addAction(self.saveAction)
@@ -148,10 +150,77 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         self.toolbar.addAction(self.redoAction)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.findAction)
-        #self.addToolBarBreak()  # 让下一个 toolbar 出现在这个 toolbar 的下面
+        self.addToolBarBreak()  # 让下一个 toolbar 出现在这个 toolbar 的下面
 
     def initFormatbar(self):
+        fontBox = QtWidgets.QFontComboBox(self)
+        fontBox.currentFontChanged.connect(lambda font: self.text.setCurrentFont(font))
+
+        fontSize = QtWidgets.QSpinBox(self)
+        fontSize.setSuffix(" pt")   # Will display " pt" after each value
+        fontSize.valueChanged.connect(lambda size: self.text.setFontPointSize(size))
+
+        fontColor = QtWidgets.QAction(QtGui.QIcon("icons/font-color.png"),"Change font color",self)
+        fontColor.triggered.connect(self.fontColorChanged)
+
+        backColor = QtWidgets.QAction(QtGui.QIcon("icons/highlight.png"),"Change background color",self)    # 所谓高亮就是改变背景颜色
+        backColor.triggered.connect(self.highlight)
+
+        boldAction = QtWidgets.QAction(QtGui.QIcon("icons/bold.png"),"Bold",self)
+        boldAction.triggered.connect(self.bold)
+
+        italicAction = QtWidgets.QAction(QtGui.QIcon("icons/italic.png"),"Italic",self)
+        italicAction.triggered.connect(self.italic)
+
+        underlAction = QtWidgets.QAction(QtGui.QIcon("icons/underline.png"),"Underline",self)
+        underlAction.triggered.connect(self.underline)
+
+        strikeAction = QtWidgets.QAction(QtGui.QIcon("icons/strike.png"),"Strike-out",self)
+        strikeAction.triggered.connect(self.strike)
+
+        alignLeft = QtWidgets.QAction(QtGui.QIcon("icons/align-left.png"),"Align left",self)
+        alignLeft.triggered.connect(self.alignLeft)
+
+        alignCenter = QtWidgets.QAction(QtGui.QIcon("icons/align-center.png"),"Align center",self)
+        alignCenter.triggered.connect(self.alignCenter)
+
+        alignRight = QtWidgets.QAction(QtGui.QIcon("icons/align-right.png"),"Align right",self)
+        alignRight.triggered.connect(self.alignRight)
+
+        alignJustify = QtWidgets.QAction(QtGui.QIcon("icons/align-justify.png"),"Align justify",self)
+        alignJustify.triggered.connect(self.alignJustify)
+
+        indentAction = QtWidgets.QAction(QtGui.QIcon("icons/indent.png"),"Indent Area",self)
+        indentAction.setShortcut("Ctrl+Tab")
+        indentAction.triggered.connect(self.indent)
+
+        dedentAction = QtWidgets.QAction(QtGui.QIcon("icons/dedent.png"),"Dedent Area",self)
+        dedentAction.setShortcut("Shift+Tab")
+        dedentAction.triggered.connect(self.dedent)
+
         self.formatbar = self.addToolBar("Format")
+        self.formatbar.addWidget(fontBox)
+        self.formatbar.addWidget(fontSize)
+        self.formatbar.addSeparator()
+
+        self.formatbar.addAction(fontColor)
+        self.formatbar.addAction(backColor)
+        self.formatbar.addSeparator()
+
+        self.formatbar.addAction(boldAction)
+        self.formatbar.addAction(italicAction)
+        self.formatbar.addAction(underlAction)
+        self.formatbar.addAction(strikeAction)
+        self.formatbar.addSeparator()
+
+        self.formatbar.addAction(alignLeft)
+        self.formatbar.addAction(alignCenter)
+        self.formatbar.addAction(alignRight)
+        self.formatbar.addAction(alignJustify)
+        self.formatbar.addSeparator()
+
+        self.formatbar.addAction(indentAction)
+        self.formatbar.addAction(dedentAction)
 
     def initMenuBar(self):
         menubar = self.menuBar()
@@ -171,15 +240,18 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         medit.addAction(self.findAction)
 
         # 控制是否显示 工具栏和状态栏, view 就是干这个的
-        toolbarAction = QtWidgets.QAction("Toggle Toolbar",self)
+        toolbarAction = QtWidgets.QAction("Toolbar",self,checkable=True)
+        toolbarAction.setChecked(True)
         toolbarAction.triggered.connect(self.toggleToolbar)
 
-        formatbarAction = QtWidgets.QAction("Toggle Formatbar",self)
+        formatbarAction = QtWidgets.QAction("Formatbar",self,checkable=True)
+        formatbarAction.setChecked(True)
         formatbarAction.triggered.connect(self.toggleFormatbar)
 
-        statusbarAction = QtWidgets.QAction("Toggle Statusbar",self)
+        statusbarAction = QtWidgets.QAction("Statusbar",self,checkable=True)
+        statusbarAction.setChecked(True)
         statusbarAction.triggered.connect(self.toggleStatusbar)
-        
+
         mview.addAction(toolbarAction)
         mview.addAction(formatbarAction)
         mview.addAction(statusbarAction)
@@ -194,7 +266,14 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         print("in new func, not implement yet.")
 
     def open(self):
-        print("in open func, not implement yet.")
+
+        # Get filename and show only .writer files
+        # PYQT5 Returns a tuple in PyQt5, we only need the filename
+        self.filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File',".","(*.*)")[0]
+
+        if self.filename:
+            with open(self.filename,"rt") as file:
+                self.text.setText(file.read())
 
     def save(self):
         print("in save func, not implement yet.")
@@ -202,20 +281,84 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
     def find(self):
         print("in find func, not implement yet.")
 
+    def bold(self):
+        if self.text.fontWeight() == QtGui.QFont.Bold:
+            self.text.setFontWeight(QtGui.QFont.Normal)
+        else:
+            self.text.setFontWeight(QtGui.QFont.Bold)
+
+    def italic(self):
+        state = self.text.fontItalic()
+        self.text.setFontItalic(not state)
+
+    def underline(self):
+        state = self.text.fontUnderline()
+        self.text.setFontUnderline(not state)
+
+    def strike(self):   # 加删除线
+        # Grab the text's format
+        fmt = self.text.currentCharFormat()
+        # Set the fontStrikeOut property to its opposite
+        fmt.setFontStrikeOut(not fmt.fontStrikeOut())
+        # And set the next char format
+        self.text.setCurrentCharFormat(fmt)
+
+    def alignLeft(self):
+        self.text.setAlignment(Qt.AlignLeft)
+
+    def alignRight(self):
+        self.text.setAlignment(Qt.AlignRight)
+
+    def alignCenter(self):
+        self.text.setAlignment(Qt.AlignCenter)
+
+    def alignJustify(self):
+        self.text.setAlignment(Qt.AlignJustify)
+    
+    def indent(self):
+        print("in indent func, not implement yet.")
+
+    def dedent(self):
+        print("in dedent func, not implement yet.")
+
+    def highlight(self):
+        print("in highlight func, not implement yet.")
+
+    def cursorPosChanged(self):
+        cur = self.text.textCursor()
+        showMsg = "line {} col {}".format(cur.blockNumber(), cur.columnNumber())
+
+        if cur.hasSelection():
+            prevCur = QtGui.QTextCursor(cur.currentFrame())
+            prevCur.setPosition(cur.anchor())
+            selectedLines = abs(prevCur.blockNumber() - cur.blockNumber()) + 1  # 计算出选中的行数
+            selectedChars = cur.selectionEnd() - cur.selectionStart()           # 计算出选中的字符数
+            showMsg = "".join([showMsg, ", {} lines & {} chars selected.".format(selectedLines, selectedChars)]) #这是选中了多少个char,而不是多少行
+        self.statusbar.showMessage(showMsg)
+
+    #def toggleMenu(self, state):
+    #    if state:
+    #        self.statusbar.show()
+    #    else:
+    #        self.statusbar.hide()
+
     def toggleToolbar(self):
         state = self.toolbar.isVisible()
-        # Set the visibility to its inverse
         self.toolbar.setVisible(not state)
 
     def toggleFormatbar(self):
         state = self.formatbar.isVisible()
-        # Set the visibility to its inverse
         self.formatbar.setVisible(not state)
 
     def toggleStatusbar(self):
         state = self.statusbar.isVisible()
-        # Set the visibility to its inverse
         self.statusbar.setVisible(not state)
+
+    def fontColorChanged(self):
+        # Get a color from the text dialog
+        color = QtWidgets.QColorDialog.getColor()
+        # Set it as the new text color
+        self.text.setTextColor(color)
 
     # override QtWidgets.QWidget.closeEvent()
     def closeEvent(self, event):
