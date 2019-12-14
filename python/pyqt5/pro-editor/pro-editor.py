@@ -40,7 +40,7 @@
 
 
 
-
+# https://doc.qt.io/archives/qtjambi-4.5.2_01/com/trolltech/qt/qtjambi-examples.html
 # https://doc.qt.io/qt-5/qtwidgets-widgets-codeeditor-example.html
 # https://zhuanlan.zhihu.com/p/34323103
 # http://blog.chinaunix.net/uid-8210028-id-337877.html
@@ -70,13 +70,34 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
 
     def initUI(self):
 
+        self.model = QtWidgets.QFileSystemModel()
+        self.model.setRootPath("./")
+        self.treeview = QtWidgets.QTreeView()
+        self.treeview.setModel(self.model)
+        self.treeview.setAnimated(False)
+        self.treeview.setSortingEnabled(True)
+        self.treeview.setAlternatingRowColors(True)
+        self.treeview.setColumnHidden(1, True)
+        self.treeview.setColumnHidden(2, True)
+
         self.text = QtWidgets.QTextEdit(self)
-        
         #self.text.setFont(QtGui.QFont("Menlo",12))
         me = QtGui.QFontMetrics(self.text.font())
         self.text.setTabStopWidth(4 * me.width(" "))   # 设置 tab 键宽度为 4 空格
-        self.setCentralWidget(self.text)
         self.text.cursorPositionChanged.connect(self.cursorPosChanged)
+
+        hbox = QtWidgets.QHBoxLayout()
+        #hbox.addStretch(1)  # 就是加一个可伸缩的空格
+        hbox.addWidget(self.treeview)
+        hbox.addWidget(self.text)
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addLayout(hbox)
+
+        self.cWidget = QtWidgets.QWidget()
+        self.cWidget.setLayout(vbox)
+        self.setCentralWidget(self.cWidget)
+
 
         self.initToolbar()
         self.initFormatbar()
@@ -88,7 +109,7 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         self.center()
 
         self.setWindowTitle('editor')
-        self.setWindowIcon(QtGui.QIcon('res/simple.png')) # 我这里写的是相对路径,所以对运行时候的位置是有要求的,这个 icon 竟然跑到 ubuntu 的左边栏了...
+        self.setWindowIcon(QtGui.QIcon('icons/myedit.png')) # 我这里写的是相对路径,所以对运行时候的位置是有要求的,这个 icon 竟然跑到 ubuntu 的左边栏了...
 
     def initToolbar(self):
  
@@ -240,6 +261,10 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         medit.addAction(self.findAction)
 
         # 控制是否显示 工具栏和状态栏, view 就是干这个的
+        treeviewAction = QtWidgets.QAction("TreeView",self,checkable=True)
+        treeviewAction.setChecked(True)
+        treeviewAction.triggered.connect(self.toggleTreeView)
+
         toolbarAction = QtWidgets.QAction("Toolbar",self,checkable=True)
         toolbarAction.setChecked(True)
         toolbarAction.triggered.connect(self.toggleToolbar)
@@ -255,6 +280,7 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         mview.addAction(toolbarAction)
         mview.addAction(formatbarAction)
         mview.addAction(statusbarAction)
+        mview.addAction(treeviewAction)
 
     def center(self):
         qr = self.frameGeometry()   # get a rectangle specifying the geometry of the main window, includes any window frame
@@ -341,6 +367,10 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
     #        self.statusbar.show()
     #    else:
     #        self.statusbar.hide()
+
+    def toggleTreeView(self):
+        state = self.treeview.isVisible()
+        self.treeview.setVisible(not state)
 
     def toggleToolbar(self):
         state = self.toolbar.isVisible()
