@@ -55,11 +55,15 @@
 #第 4部分：http://www.binpress.com/tutorial/building-a-text-editor-with-pyqt-part-4/148
 
 import sys
+import os
 
 from PyQt5 import QtWidgets
 from PyQt5 import QtGui
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import Qt
+
+sys.path.append('./')
+from myutil import find
 
 class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
     def __init__(self):
@@ -71,7 +75,7 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
     def initUI(self):
 
         self.model = QtWidgets.QFileSystemModel()
-        self.model.setRootPath("./")
+        self.model.setRootPath("/home/fang/codes/test/my-exercise/")
         self.treeview = QtWidgets.QTreeView()
         self.treeview.setModel(self.model)
         self.treeview.setAnimated(False)
@@ -79,6 +83,9 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         self.treeview.setAlternatingRowColors(True)
         self.treeview.setColumnHidden(1, True)
         self.treeview.setColumnHidden(2, True)
+        ## horizontal expanding, vertical expanding
+        #sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        #self.treeview.setSizePolicy(sizePolicy)
 
         self.text = QtWidgets.QTextEdit(self)
         #self.text.setFont(QtGui.QFont("Menlo",12))
@@ -90,6 +97,8 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         #hbox.addStretch(1)  # 就是加一个可伸缩的空格
         hbox.addWidget(self.treeview)
         hbox.addWidget(self.text)
+        hbox.setStretchFactor(self.treeview,1)  # 设置 hbox 比例因子为 1:2
+        hbox.setStretchFactor(self.text,2)      # 设置 hbox 比例因子为 1:2
 
         vbox = QtWidgets.QVBoxLayout()
         vbox.addLayout(hbox)
@@ -131,7 +140,7 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         self.findAction = QtWidgets.QAction(QtGui.QIcon("icons/find.png"),"Find and replace",self)
         self.findAction.setStatusTip("Find and replace words in your document")
         self.findAction.setShortcut("Ctrl+F")
-        #self.findAction.triggered.connect(find.Find(self).show)    # 这是调用了另一个 find 类的方法,有点小复杂,先注释掉
+        #self.findAction.triggered.connect(find.Find(self).show)    # 调用 find 包中 Find 类构造并show,并将本class传下去
         self.findAction.triggered.connect(self.find)
 
         self.cutAction = QtWidgets.QAction(QtGui.QIcon("icons/cut.png"),"Cut to clipboard",self)
@@ -297,6 +306,9 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         # PYQT5 Returns a tuple in PyQt5, we only need the filename
         self.filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File',".","(*.*)")[0]
 
+        if os.path.splitext(self.filename)[1] == ".py": # 指定一个后缀作为 project info 文件,一次性打开很多文件作为project
+            print ("it's a project file, not implement yet.")
+
         if self.filename:
             with open(self.filename,"rt") as file:
                 self.text.setText(file.read())
@@ -305,7 +317,9 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         print("in save func, not implement yet.")
 
     def find(self):
-        print("in find func, not implement yet.")
+        print("in find func.")
+        f = find.Find(self)
+        f.show()
 
     def bold(self):
         if self.text.fontWeight() == QtGui.QFont.Bold:
