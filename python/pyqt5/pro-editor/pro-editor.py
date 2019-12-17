@@ -69,6 +69,9 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
     def __init__(self):
 
         super().__init__()
+        self.proFilePath = ""
+        self.proFileName = ""
+        self.proRootPath = ""   # code tree root
 
         self.initUI()   # init 构造函数里调用了下面的 initUI()
 
@@ -83,6 +86,7 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         self.treeview.setAlternatingRowColors(True)
         self.treeview.setColumnHidden(1, True)
         self.treeview.setColumnHidden(2, True)
+        self.treeview.setVisible(False)
         ## horizontal expanding, vertical expanding
         #sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         #self.treeview.setSizePolicy(sizePolicy)
@@ -256,6 +260,7 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         menubar = self.menuBar()
         mfile = menubar.addMenu("File")
         medit = menubar.addMenu("Edit")
+        mproject = menubar.addMenu("Project")
         mview = menubar.addMenu("View")
 
         mfile.addAction(self.newAction)
@@ -268,6 +273,35 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         medit.addAction(self.undoAction)
         medit.addAction(self.redoAction)
         medit.addAction(self.findAction)
+
+        self.newProAction = QtWidgets.QAction("New Pro",self)
+        self.newProAction.setShortcut("Ctrl+Alt+N")
+        self.newProAction.setStatusTip("New a project.")
+        self.newProAction.triggered.connect(self.newProject)
+
+        self.openProAction = QtWidgets.QAction("Open Pro",self)
+        self.openProAction.setShortcut("Ctrl+Alt+P")
+        self.openProAction.setStatusTip("Open a project.")
+        self.openProAction.triggered.connect(self.openProject)
+
+        self.searchProAction = QtWidgets.QAction("Search Pro",self)
+        self.searchProAction.setShortcut("Ctrl+Alt+S")
+        self.searchProAction.setStatusTip("Search project.")
+        self.searchProAction.triggered.connect(self.searchProject)
+
+        self.loadCfgsAction = QtWidgets.QAction("Load Configuration",self)
+        self.loadCfgsAction.setStatusTip("Load Configurations.")
+        self.loadCfgsAction.triggered.connect(self.loadConfigs)
+
+        self.storeCfgsAction = QtWidgets.QAction("Store Configuration",self)
+        self.storeCfgsAction.setStatusTip("Store Configurations.")
+        self.storeCfgsAction.triggered.connect(self.storeConfigs)
+
+        mproject.addAction(self.newProAction)
+        mproject.addAction(self.openProAction)
+        mproject.addAction(self.searchProAction)
+        mproject.addAction(self.loadCfgsAction)
+        mproject.addAction(self.storeCfgsAction)
 
         # 控制是否显示 工具栏和状态栏, view 就是干这个的
         treeviewAction = QtWidgets.QAction("TreeView",self,checkable=True)
@@ -306,12 +340,34 @@ class Main(QtWidgets.QMainWindow): # 继承自系统类 QWidget
         # PYQT5 Returns a tuple in PyQt5, we only need the filename
         self.filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File',".","(*.*)")[0]
 
-        if os.path.splitext(self.filename)[1] == ".py": # 指定一个后缀作为 project info 文件,一次性打开很多文件作为project
-            print ("it's a project file, not implement yet.")
+        #if os.path.splitext(self.filename)[1] == ".py": # 指定一个后缀作为 project info 文件,一次性打开很多文件作为project
+        #    print ("it's a project file, not implement yet.")
+        print ("filename is {}.".format(self.filename))
 
         if self.filename:
             with open(self.filename,"rt") as file:
                 self.text.setText(file.read())
+
+    def newProject(self):
+        projectPath = QtWidgets.QFileDialog.getExistingDirectory(self, "where the project is to save", "./")
+        print("projectPath is {}.".format(projectPath))
+        codePath = QtWidgets.QFileDialog.getExistingDirectory(self, "where the target code is", "./")
+        print("codePath is {}.".format(codePath))
+
+    def openProject(self):
+        self.projectFile = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File',".","(*.pro)")[0]
+        print("projectFile is {}.".format(self.projectFile))
+
+    def searchProject(self):
+        print("self.searchProject, not implement yet")
+
+    def loadConfigs(self):
+        self.cfgFile = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File',".","(*.cfg)")[0]
+        print("cfgFile is {}.".format(self.cfgFile))
+
+    def storeConfigs(self):
+        cfgPath = QtWidgets.QFileDialog.getExistingDirectory(self, "where the configs is to save", "./")
+        print("cfgPath is {}.".format(cfgPath))
 
     def save(self):
         print("in save func, not implement yet.")
