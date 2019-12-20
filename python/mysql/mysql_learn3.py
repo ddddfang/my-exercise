@@ -54,30 +54,33 @@ with open("./tags", 'r') as fr:
 
     pa1 = re.compile(r'/\^.*;"|\d+;"', re.IGNORECASE)
     pa2 = re.compile(r'line:\d+', re.IGNORECASE)
+    pa3 = re.compile(r'\.?/.*\..*? ', re.IGNORECASE)
+    pa4 = re.compile(r'function|struct|macro|prototype|enum|class|externvar|typedef|variable|member|union|namespace', re.IGNORECASE)
     for i,line in enumerate(content[6:]):
-        if i == 11236:
+        if i == 657 or i==658 or i==672 or i==1363 or i==5580 or i==5795 or i==5872 or i==14793:
             print (line)
         line = line.replace("\t", " ")
         item = []
         item.append(i)
 
         linenumber = 0
-        for target in pa1.findall(line):
+        for target in pa1.findall(line):    # remove desc
             line = line.replace(target,"")
-        for target in pa2.findall(line):
+        for target in pa2.findall(line):    # get linenumber
             line = line.replace(target,"")
             target = target.replace("line:","")
             linenumber = int(target)
+        for target in pa3.findall(line):    # get filename info
+            line = line.replace(target,"")
+            location = "".join([target.strip(),":",str(linenumber)])
 
         lineitems = line.split()
         symbol_name = lineitems[0]
         if symbol_name == "operator":
             symbol_name += lineitems[1]
-            location = "".join([lineitems[2],":",str(linenumber)])
-            symbol_type = lineitems[3]
-        else:
-            location = "".join([lineitems[1],":",str(linenumber)])
             symbol_type = lineitems[2]
+        else:
+            symbol_type = lineitems[1]
     
         # 插入到 db
         cmd = '''

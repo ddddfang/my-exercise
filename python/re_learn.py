@@ -29,3 +29,25 @@ with open("/home/fang/codes/zxnn_lib/test/test_zxnn_auto_fused.h") as fr:
     for i in p.findall(doc):
         print (type(i), i)
 
+content = "hello , this is a test string"
+p = re.compile(r'\w*is', re.I)
+for i in p.findall(content):
+    print(i)
+
+for i in range(len(content)):
+    res = p.match(content,i)  # 默认从pos=0开始匹配,pos=0处匹配不上就认为匹配失败,endpos=len(string)为默认的停止匹配位置
+    if res:
+        print("found,{},{}".format(res.group(),res.span()))
+    else:
+        print("not found at {}".format(i))
+
+res = p.search(content)     # search 直接从给定字符串中查找匹配的起始位置,找到就返回不再继续找了
+if res:
+    print("found,{},{}".format(res.group(),res.span()))
+else:
+    print("not found")
+
+res = list(p.finditer(content)) # 返回所有匹配的位置 span()
+print(res)
+for i in res:
+    print("type {}, {}, {}".format(type(i), i, i.span()))
