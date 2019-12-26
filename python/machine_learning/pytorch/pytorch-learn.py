@@ -93,3 +93,46 @@ x = torch.arange(0, 1.0*5.0*5.0).reshape(1,1,5,5)
 output = m(x)
 print("x is ", x)
 print("o is ", output)
+
+
+
+
+
+
+import math
+import unittest
+import numpy as np
+import torch
+from torch import Tensor
+from torch.autograd import gradcheck
+from torch.jit.annotations import Tuple
+from torch.nn.modules.utils import _pair
+from torchvision import ops
+
+
+
+x = np.arange(2*3*7*7).reshape(2, 3, 7, 7)
+tensorX = Tensor(x)
+print(tensorX)
+
+rois = np.zeros(shape=(2,5),dtype=np.int16)
+rois[0][0] = 0
+rois[0][1] = 3
+rois[0][2] = 1
+rois[0][3] = 3
+rois[0][4] = 1
+
+rois[1][0] = 1
+rois[1][1] = 2
+rois[1][2] = 2
+rois[1][3] = 4
+rois[1][4] = 3
+tensorRois = Tensor(rois)
+print(tensorRois)
+
+#tensorY = ops.RoIAlign((2, 2), spatial_scale=1.0, sampling_ratio=-1)(tensorX, tensorRois)
+tensorY = ops.RoIAlign((3, 3), spatial_scale=1.0, sampling_ratio=2)(tensorX, tensorRois)
+print(tensorY)
+
+
+
