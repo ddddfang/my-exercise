@@ -45,7 +45,8 @@ print("argsort() is \n{}".format(b))
 
 row=b
 print("row is \n{}".format(row))
-col=[[i for i in range(b.shape[1])] for j in range(b.shape[0])]
+#col=[[i for i in range(b.shape[1])] for j in range(b.shape[0])]
+col=np.broadcast_to(np.array([i for i in range(b.shape[1])]), row.shape)
 print("col is \n{}".format(col))
 print(a[row,col])
 a.sort(0)
@@ -65,6 +66,13 @@ print(a)
 #print(a.min(axis=1)) #对a的每一行求min，得到一个数组,reduce
 #print(np.exp(a))	#map操作,还有sin(a),cos(a),sqrt(a),add(a,b)也可以这样
 
+a = np.array([[1,2,3,4]]).reshape(1,4)
+b = np.broadcast_to(a,(3,4))
+print("{}(shape is {}) is broadcast to \n{}".format(a,a.shape,b))
+
+a = np.linspace(0, 15, 2*1*4*1).reshape(2,1,4,1)
+b = np.broadcast_to(a,(2,3,4,4))
+print("{}(shape is {}) is broadcast to \n{}".format(a,a.shape,b))
 
 #a = np.array([(1,2,3),(4,5,6)])
 #b = np.arange(0,3,0.5).reshape(2,3)
