@@ -99,15 +99,15 @@ print("o is ", output)
 
 
 
-import math
-import unittest
-import numpy as np
-import torch
-from torch import Tensor
-from torch.autograd import gradcheck
-from torch.jit.annotations import Tuple
-from torch.nn.modules.utils import _pair
-from torchvision import ops
+#import math
+#import unittest
+#import numpy as np
+#import torch
+#from torch import Tensor
+#from torch.autograd import gradcheck
+#from torch.jit.annotations import Tuple
+#from torch.nn.modules.utils import _pair
+#from torchvision import ops
 
 
 
@@ -135,4 +135,17 @@ from torchvision import ops
 #print(tensorY)
 
 
+
+
+from torch import nn
+from torch.nn import init
+from torch.autograd import Variable
+
+dconv = nn.ConvTranspose2d(in_channels=1, out_channels= 1,  kernel_size=2, stride=2, padding=1,output_padding=0, bias= False)
+init.constant(dconv.weight, 1)
+print(dconv.weight)
+
+input = Variable(torch.ones(1, 1, 2, 2))
+print(input)
+print(dconv(input))
 
