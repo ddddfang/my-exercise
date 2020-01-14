@@ -1,3 +1,5 @@
+# 这个 pyautogui 在window环境下工作良好,但是在linux下不行,安装的时候conda就没有提供,是通过pip安装的
+# https://github.com/asweigart/pyautogui
 # https://www.2cto.com/kf/201709/684137.html
 # https://www.jianshu.com/p/b42f262e02a2
 # https://www.cnblogs.com/daysn/p/11424980.html
