@@ -6,7 +6,11 @@ import time
 
 
 #------------------------------------------------------------
-driver = webdriver.Firefox(executable_path=r'/usr/local/bin/geckodriver')
+pf = webdriver.FirefoxProfile()
+#pf.set_preference("permissions.default.stylesheet", 2)  #控制不加载css
+#pf.set_preference("permissions.default.image", 2)       #控制不加载图片
+driver = webdriver.Firefox(firefox_profile=pf, executable_path=r'/usr/local/bin/geckodriver')
+#driver = webdriver.Firefox(executable_path=r'/usr/local/bin/geckodriver')
 driver.implicitly_wait(20) # 隐性等待，最长等20秒
 
 link = 'http://www.santostang.com/2018/07/04/hello-world/'  #该网页的评论部分是动态加载的
