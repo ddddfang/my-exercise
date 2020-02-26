@@ -7,5 +7,12 @@
 
 
 class ScrapyProPipeline(object):
+
     def process_item(self, item, spider):
+        title = item['title']
+        link = item['link']
+        content = item['content']
+        with open('./result.txt', 'a+') as fw:
+            fw.write("title:\n{}\n\nlink:\n{}\n\ncontent:\n{}\n\n".format(title, link, content))
+            fw.write("\n\n----------------------------------------------------------------------\n\n")
         return item

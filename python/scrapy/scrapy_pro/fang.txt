@@ -18,4 +18,15 @@ scrapy genspider santostang www.santostang.com
 scrapy crawl santostang
 
 scrapy crawl santostang -o abc.json
+scrapy crawl santostang -o abc.csv
 
+
+若是想启用 pipleline 写入到文件/数据库,需要:
+1.重写pipleline.py中的 process_item()方法
+2.settings.py中打开
+    ITEM_PIPELINES = {
+         'scrapy_pro.pipelines.ScrapyProPipeline': 300,
+    }
+的注释
+
+然后 scrapy crawl santostang 即可得到 pipleline 处理的结果
