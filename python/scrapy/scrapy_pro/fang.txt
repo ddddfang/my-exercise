@@ -1,0 +1,21 @@
+这个project是在本目录的上层目录运行:
+scrapy startproject scrapy_pro 
+得到project的模板
+
+然后修改 items.py
+
+然后在items.py所在目录:
+scrapy genspider santostang www.santostang.com
+生成 santostang.py 位于spiders/
+
+修改 santostang.py 的parse代码
+
+
+
+
+---------- run -------------------
+在items.py所在目录或工程根目录:
+scrapy crawl santostang
+
+scrapy crawl santostang -o abc.json
+
