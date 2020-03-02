@@ -18,7 +18,7 @@ class TaskRecord(db.Model):
     id = db.Column(db.INT, primary_key=True)
     clientIP = db.Column(db.String(50))
     name = db.Column(db.String(50))
-    statue = db.Column(db.String(50))
+    status = db.Column(db.String(50))
     #createTime = db.Column(db.DateTime, server_default=db.func().now())
     createTime = db.Column(db.DateTime, default=datetime.now)
 
@@ -27,44 +27,65 @@ class TaskRecord(db.Model):
 #创建哪些table? 应该是所有继承自 db.Model 的那些类
 db.create_all()
 
-
-#插入数据
-p = ProgramInfo()
-p.clientIP = 'localhost'
-p.introduce = 'Auto Command Executor'
-p.name = 'Machine.01'
-p.statusLock = ''
-db.session.add(p)
-db.session.commit()
-for i in ProgramInfo.query.all():   #返回 ProgramInfo 类组成的 list
-    print("{}:{}".format(type(i), i))
-print("--------------------insert complete---------------------------")
-
-#更新数据
-name = 'Machine.01'
-qs = ProgramInfo.query.filter_by(name=name)
-qs.update({ProgramInfo.introduce : 'Command Executor Machines'})
-print(ProgramInfo.query.all())
-print("--------------------update complete---------------------------")
-
-#查询数据
-print(ProgramInfo.query.all())
-#条件查询
-print(ProgramInfo.query.filter_by(name='Machine.01'))
-#查询某字段
-print(db.session.query(ProgramInfo.name).all())
-print("------------------get complete-----------------------------")
-
-#删除数据
-#qs = db.session.query().filter_by(name='Machine.01').first()
-qs = ProgramInfo.query.filter_by(name='Machine.01').first()
-db.session.delete(qs)
-db.session.commit()
-print("-------------------delete complete----------------------------")
-
-
-
+#下面的子句只有在直接执行此py的时候才会执行,被当作模块导入的时候是不会执行的
+if __name__=='__main__':
+    ##插入数据
+    #p = ProgramInfo()
+    #p.clientIP = 'localhost'
+    #p.introduce = 'Auto Command Executor'
+    #p.name = 'Machine.01'
+    #p.statusLock = ''
+    #db.session.add(p)
+    #db.session.commit()
+    #for i in ProgramInfo.query.all():   #返回 ProgramInfo 类组成的 list
+    #    print("{}:{}".format(type(i), i))
+    #print("--------------------insert complete---------------------------")
+    #
+    ##更新数据
+    #name = 'Machine.01'
+    #qs = ProgramInfo.query.filter_by(name=name)
+    #qs.update({ProgramInfo.introduce : 'Command Executor Machines'})
+    #print(ProgramInfo.query.all())
+    #print("--------------------update complete---------------------------")
+    #
+    ##查询数据
+    #print(ProgramInfo.query.all())
+    ##条件查询
+    #print(ProgramInfo.query.filter_by(name='Machine.01'))
+    ##查询某字段
+    #print(db.session.query(ProgramInfo.name).all())
+    #print("------------------get complete-----------------------------")
+    #
+    ##删除数据
+    ##qs = db.session.query().filter_by(name='Machine.01').first()
+    #qs = ProgramInfo.query.filter_by(name='Machine.01').first()
+    #db.session.delete(qs)
+    #db.session.commit()
+    #print("-------------------delete complete----------------------------")
 
 
+    p = ProgramInfo()
+    p.clientIP = 'localhost'
+    p.introduce = 'Auto Command Executor'
+    p.name = 'Machine.01'
+    p.statusLock = ''
+    db.session.add(p)
+    #db.session.commit()
+
+    p = ProgramInfo()
+    p.clientIP = 'localhost'
+    p.introduce = 'Auto Command Executor'
+    p.name = 'Machine.02'
+    p.statusLock = ''
+    db.session.add(p)
+    #db.session.commit()
+
+    p = ProgramInfo()
+    p.clientIP = 'localhost'
+    p.introduce = 'Auto Command Executor'
+    p.name = 'Machine.03'
+    p.statusLock = ''
+    db.session.add(p)
+    db.session.commit()
 
 
