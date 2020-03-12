@@ -22,6 +22,7 @@ print("\n\n the python path is", sys.path,"\n")
 
 
 import time
+#https://www.cnblogs.com/jfl-xx/p/8024596.html
 for i in range(0,3):
     print("hello %d,%s,%s"%(i,time.ctime(),time.strftime( "%Y-%m-%d %H:%M:%S" , time.localtime() )))
     time.sleep(1)
