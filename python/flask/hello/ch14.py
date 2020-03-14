@@ -4,6 +4,7 @@ from flask import jsonify
 from flask import render_template
 
 # 创建一个 Flask 对象实例,代表整改网站系统
+print(__name__)
 app = Flask(__name__)
 
 
@@ -43,6 +44,9 @@ def helloHtml():
     #    html = fr.read()
     #    return html
 
+    ##直接返回html源码
+    #return '<h1>hello flask!</h1>'
+
 # url = 127.0.0.1:5000/user/
 @app.route('/user/', methods=['GET', 'POST'])
 def user():
@@ -57,18 +61,26 @@ def user():
         passwd = request.form.get('passwd')
         return "this is user center.POST."
 
+#动态url
 # url = 127.0.0.1:5000/user/xxx
+#@app.route('/user', defaults={'types':'nickname'})  #为<types>变量设置默认值
 @app.route('/user/<types>/')
 def userCenter(types):
     return "this is user's " + types + " center.."
 
 
-
-
 # 网站开始运行
-app.run()
+# 若将此文件更改为app.py,则可以直接在命令行下运行 flask run(官方更推荐的方法),和下面这个app.run()效果一样
+# flask run 会在当前目录寻找 app.py 和 wsgi.py,并从中寻找名为 app/application 的对象实例
+# 或 export FLASK_APP=abc 则flask在 abc.py 中寻找名为 app/application 的对象实例
 
-#if __name__ == '__main__':
-#    app.run()
+# flask run --host=0.0.0.0 --port=8000 
+# --host=0.0.0.0 将主机地址设置为对外可见,这样服务器可以监听来自任意ip的请求,也可以通过环境变量 FLASK_RUN_HOST=xxx 来设置
+# --port=8000 监听 8000 端口,也可以通过环境变量 FLASK_RUN_PORT=xxx 来设置
+# 除此之外 可将 FLASK_ENV=development(默认 production)打开flask的开发特性(调试mode被打开)
+
+if __name__ == '__main__':
+    app.run()   # 默认port端口为 5000
+    #app.run(port=8080, debug=True)
 
 

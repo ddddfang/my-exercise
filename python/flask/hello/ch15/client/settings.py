@@ -15,7 +15,7 @@ def make_celery(app):
         def __call__(self, *args, **kwargs):
             with app.app_context(): #在 app 的上下文中运行任务
                 return self.run(*args, **kwargs)
-    mycelery.Task = ContextTask       #这样后面就可以 celery.Task(xxx) 使用了
+    mycelery.Task = ContextTask       #这样后面使用 @mycelery.task() 装饰器的函数就是关联到这个 ContextTask ?
     return mycelery
 
 
