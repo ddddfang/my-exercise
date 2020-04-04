@@ -9,7 +9,7 @@
 
 
 # 关于pymysql基本数据的测试: https://github.com/PyMySQL/PyMySQL/blob/master/pymysql/tests/test_basic.py
-
+# https://www.cnblogs.com/leijiangtao/p/11874182.html
 
 # 这个脚本: 读取excel并将其中的内容写入 test_db.table_zx 中
 # 完成后 从数据库中检索数据,作为数据库操作的基本sample
