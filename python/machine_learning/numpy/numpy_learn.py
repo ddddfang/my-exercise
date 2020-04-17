@@ -106,3 +106,16 @@ print("{}(shape is {}) is broadcast to \n{}".format(a,a.shape,b))
 ##水平方向: [1 2 3 4 5 6]
 ##竖直方向: [[1 2 3]
 ##          [4 5 6]]
+
+array0 = np.arange(6).reshape(2,3)
+array1 = np.arange(6,12).reshape(2,3)
+array2 = np.arange(12,18).reshape(2,3)
+arrays = [array0, array1, array2]
+print(arrays)
+
+# 对于arrays(列表或元组,有n个元素)中的每一个元素,shape必须一样,
+# axis=0表示新添加一个维度作为第0维,结果得到n*2*3的 array,堆叠完成2*3后再堆叠n
+# axis=1表示新添加一个维度作为第1维,结果得到2*n*3的 array,堆叠完成3后堆叠n
+# axis=2(或-1)表示新添加一个维度作为第2维,结果得到2*3*n的 array,
+stacked = np.stack(arrays, axis=1)
+print(stacked)
