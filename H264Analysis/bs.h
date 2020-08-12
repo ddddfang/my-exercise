@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "stream.h"
+
 typedef struct
 {
     uint8_t* start; // 指向buf头部指针
@@ -87,7 +89,7 @@ static inline uint32_t bs_read_u1(bs_t* b)
  @param n 读取多少个比特
  @return 返回读取到的值
  */
-static inline uint32_t bs_read_u(bs_t* b, int n)
+static inline uint32_t bs_read_u(bs_t* b, int n, const char *traceString)
 {
     uint32_t r = 0; // 读取比特返回值
     int i;  // 当前读取到的比特位索引
@@ -95,13 +97,19 @@ static inline uint32_t bs_read_u(bs_t* b, int n)
         // 1.每次读取1比特，并依次从高位到低位放在r中
         r |= ( bs_read_u1(b) << ( n - i - 1 ) );
     }
+
+    if (traceString != NULL) {
+#if TRACE
+        traceInput(traceString, r);
+#endif
+    }
     return r;
 }
 
 /**
  ue(v) 解码
  */
-static inline uint32_t bs_read_ue(bs_t* b)
+static inline uint32_t bs_read_ue(bs_t* b, const char *traceString)
 {
     int32_t r = 0; // 解码得到的返回值
     int i = 0;     // leadingZeroBits
@@ -111,24 +119,36 @@ static inline uint32_t bs_read_ue(bs_t* b)
         i++;
     }
     // 2.计算read_bits( leadingZeroBits )
-    r = bs_read_u(b, i);
+    r = bs_read_u(b, i, NULL);
     // 3.计算codeNum，1 << i即为2的i次幂
     r += (1 << i) - 1;
+
+    if (traceString != NULL) {
+#if TRACE
+        traceInput(traceString, r);
+#endif
+    }
     return r;
 }
 
 /**
  se(v) 解码
  */
-static inline int32_t bs_read_se(bs_t* b)
+static inline int32_t bs_read_se(bs_t* b, const char *traceString)
 {
     // 1.解码出codeNum，记为r
-    int32_t r = bs_read_ue(b);
+    int32_t r = bs_read_ue(b, NULL);
     // 2.判断r的奇偶性
     if (r & 0x01) {// 如果为奇数，说明编码前>0
         r = (r+1)/2;
     } else {// 如果为偶数，说明编码前<=0
         r = -(r/2);
+    }
+
+    if (traceString != NULL) {
+#if TRACE
+        traceInput(traceString, r);
+#endif
     }
     return r;
 }
@@ -136,15 +156,22 @@ static inline int32_t bs_read_se(bs_t* b)
 /**
  te(v) 解码
  */
-static inline uint32_t bs_read_te( bs_t *b, int x )
+static inline uint32_t bs_read_te( bs_t *b, int x, const char *traceString)
 {
+    uint32_t r = 0;
     // 1.判断取值上限
     if( x == 1 ) {// 如果为1则将读取到的比特值取反
-        return 1 - bs_read_u1( b );
-    } else if( x > 1 ) {// 否则按照ue(v)进行解码
-        return bs_read_ue( b );
+        r = 1 - bs_read_u1( b );
+    } else if ( x > 1 ) {// 否则按照ue(v)进行解码
+        r = bs_read_ue(b, NULL);
     }
-    return 0;
+
+    if (traceString != NULL) {
+#if TRACE
+        traceInput(traceString, r);
+#endif
+    }
+    return r;
 }
 
 #endif /* bs_h */

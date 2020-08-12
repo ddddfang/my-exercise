@@ -83,6 +83,8 @@ int find_nal_unit(nalu_t *nalu, int buff_size, int *curr_nal_start, int *curr_fi
  */
 void read_nal_unit(nalu_t *nalu)
 {
+    int nalu_size = nalu->len;
+
     // 1.去除nalu中的emulation_prevention_three_byte：0x03
     nalu->len = nal_to_rbsp(nalu);
     
@@ -90,13 +92,15 @@ void read_nal_unit(nalu_t *nalu)
     bs_t *bs = bs_new(nalu->buf, nalu->len);
     
     // 3. 读取nal header 7.3.1
-    nalu->forbidden_zero_bit = bs_read_u(bs, 1);
-    nalu->nal_ref_idc = bs_read_u(bs, 2);
-    nalu->nal_unit_type = bs_read_u(bs, 5);
+    nalu->forbidden_zero_bit = bs_read_u(bs, 1, NULL);
+    nalu->nal_ref_idc = bs_read_u(bs, 2, NULL);
+    nalu->nal_unit_type = bs_read_u(bs, 5, NULL);
     
-    printf("\tnal->forbidden_zero_bit: %d\n", nalu->forbidden_zero_bit);
-    printf("\tnal->nal_ref_idc: %d\n", nalu->nal_ref_idc);
-    printf("\tnal->nal_unit_type: %d\n", nalu->nal_unit_type);
+#if TRACE
+    fprintf (trace_fp, "\n\nAnnex B NALU len %d, forbidden_bit %d, nal_reference_idc %d, nal_unit_type %d\n\n",
+        nalu_size, nalu->forbidden_zero_bit, nalu->nal_ref_idc, nalu->nal_unit_type);
+    fflush (trace_fp);
+#endif
     
     switch (nalu->nal_unit_type) {
         case H264_NAL_SPS:
@@ -148,8 +152,7 @@ int nal_to_rbsp(nalu_t *nalu)
     // 遇到0x000003则把03去掉，包含以cabac_zero_word结尾时，尾部为0x000003的情况
     for (int i = 0; i < nalu_size; i++) {
         
-        if (count == 2 && nalu->buf[i] == 0x03)
-        {
+        if (count == 2 && nalu->buf[i] == 0x03) {
             if (i == nalu_size - 1) {// 结尾为0x000003
                 break; // 跳出循环
             } else {
