@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "bs.h"
+
 #define MAX_NALU_SIZE 8000000         // 最大nalu
 
 /**
@@ -53,6 +55,7 @@ void read_nal_unit(nalu_t *nalu);
 
 int nal_to_rbsp(nalu_t *nalu);
 int rbsp_to_sodb(nalu_t *nalu);
+int more_rbsp_data(bs_t *b);
 
 nalu_t *allocNalu(int buff_size);
 void freeNalu(nalu_t *nalu);

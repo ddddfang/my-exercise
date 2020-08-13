@@ -60,6 +60,33 @@ static inline int bs_eof(bs_t* bs)
     }
 }
 
+/**
+ 克隆一个bs_t句柄
+
+ @param dest 目标句柄
+ @param src 源句柄
+ @return 目标句柄
+ */
+static inline bs_t* bs_clone(bs_t* dest, const bs_t* src)
+{
+    dest->start = src->p;
+    dest->p = src->p;
+    dest->end = src->end;
+    dest->bits_left = src->bits_left;
+    return dest;
+}
+
+/** 不影响原读取操作的情况下，读取1个比特 */
+static inline uint32_t bs_peek_u1(bs_t* b)
+{
+    uint32_t r = 0;
+
+    if (! bs_eof(b)) {
+        r = ((*(b->p)) >> ( b->bits_left - 1 )) & 0x01;
+    }
+    return r;
+}
+
 /** 读取1个比特 */
 static inline uint32_t bs_read_u1(bs_t* b)
 {

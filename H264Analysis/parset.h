@@ -183,10 +183,89 @@ typedef struct
         vui_parameters_t vui_parameters; // Annex E E.1.1
 } sps_t;
 
+
+/**
+Picture Parameter Set
+@see 7.3.2.2 Picture parameter set RBSP syntax
+*/
+typedef struct
+{
+   int pic_parameter_set_id;                            // ue(v)
+   int seq_parameter_set_id;                            // ue(v)
+   int entropy_coding_mode_flag;                        // u(1)
+   int bottom_field_pic_order_in_frame_present_flag;    // u(1)
+   
+   /*  —————————— FMO相关 Start  —————————— */
+   int num_slice_groups_minus1;                         // ue(v)
+// if( num_slice_groups_minus1 > 0 ) {
+       int slice_group_map_type;                        // ue(v)
+//     if( slice_group_map_type = = 0 )
+//         for( iGroup = 0; iGroup <= num_slice_groups_minus1; iGroup++ )
+               // num_slice_groups_minus1取值范围[0, 7]，见附录A
+               int run_length_minus1[8];                // ue(v)
+//     else if( slice_group_map_type = = 2 )
+//         for( iGroup = 0; iGroup < num_slice_groups_minus1; iGroup++ ) {
+               int top_left[8];                         // ue(v)
+               int bottom_right[8];                     // ue(v)
+//     else if( slice_group_map_type = = 3 | | slice_group_map_type = = 4 | | slice_group_map_type = = 5 ) {
+           int slice_group_change_direction_flag;       // u(1)
+           int slice_group_change_rate_minus1;          // ue(v)
+//     } else if( slice_group_map_type = = 6 ) {
+           int pic_size_in_map_units_minus1;            // ue(v)
+//         for( i = 0; i <= pic_size_in_map_units_minus1; i++ )
+               int *slice_group_id;                     // u(v) //大小与解码的图像尺寸有关
+   /*  —————————— FMO相关 End  —————————— */
+   
+   int num_ref_idx_l0_default_active_minus1;            // ue(v)
+   int num_ref_idx_l1_default_active_minus1;            // ue(v)
+   int weighted_pred_flag;                              // u(1)
+   int weighted_bipred_idc;                             // u(2)
+   
+   int pic_init_qp_minus26;                             // se(v)
+   int pic_init_qs_minus26;                             // se(v)
+   int chroma_qp_index_offset;                          // se(v)
+   
+   int deblocking_filter_control_present_flag;          // u(1)
+   int constrained_intra_pred_flag;                     // u(1)
+   int redundant_pic_cnt_present_flag;                  // u(1)
+   
+// if( more_rbsp_data( ) ) {
+       int transform_8x8_mode_flag;                     // u(1)
+       int pic_scaling_matrix_present_flag;             // u(1)
+//     if( pic_scaling_matrix_present_flag )
+           /*
+           for( i = 0; i < 6 +
+            ( ( chroma_format_idc != 3 ) ? 2 : 6 ) * transform_8x8_mode_flag; i++ ) {
+           */
+               int pic_scaling_list_present_flag[12];    // u(1)
+//             if( pic_scaling_list_present_flag[ i ] )
+//                 if( i < 6 )
+                       int ScalingList4x4[6][16]; // 二维数组遍历
+                       int UseDefaultScalingMatrix4x4Flag[6];
+//                 else
+                       int ScalingList8x8[6][64];
+                       int UseDefaultScalingMatrix8x8Flag[6];
+       int second_chroma_qp_index_offset;                  // se(v)
+} pps_t;
+
+extern sps_t *active_sps;  // 已经激活的sps
+extern pps_t *active_pps;  // 已经激活的pps
+
+
+
+
+void activeParameterSet(int pps_id);
+
 // 处理SPS
 void processSPS(bs_t *b);
+// 处理PPS
+void processPPS(bs_t *b);
 
 sps_t *allocSPS(void); // 初始化sps结构体
 void freeSPS(sps_t *sps); // 释放sps
+
+pps_t *allocPPS(void);
+void freePPS(pps_t *pps);
+
 
 #endif /* parset_h */

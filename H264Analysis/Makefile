@@ -1,6 +1,6 @@
 MODULE_BIN = decode
 MODULE_OBJS += $(patsubst %.c, %.o, $(wildcard ./%.c))
-MODULE_OBJS += decode.o nalu.o stream.o parset.o
+MODULE_OBJS += decode.o nalu.o stream.o parset.o slice.o header.o
 
 OUT_DIR = .
 

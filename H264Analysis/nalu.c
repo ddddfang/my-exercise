@@ -11,6 +11,9 @@
 #include "stream.h"
 #include "bs.h"
 #include "parset.h"
+#include "slice.h"
+
+extern slice_t *currentSlice;
 
 /**
  找到h264码流中的nalu
@@ -110,11 +113,15 @@ void read_nal_unit(nalu_t *nalu)
             
         case H264_NAL_PPS:
             nalu->len = rbsp_to_sodb(nalu);
+            processPPS(bs);
             break;
             
         case H264_NAL_SLICE:
         case H264_NAL_IDR_SLICE:
+            currentSlice->idr_flag = (nalu->nal_unit_type == H264_NAL_IDR_SLICE);
+            currentSlice->nal_ref_idc = nalu->nal_ref_idc;
             nalu->len = rbsp_to_sodb(nalu);
+            processSlice(bs);
             break;
             
         case H264_NAL_DPA:
@@ -203,6 +210,36 @@ int rbsp_to_sodb(nalu_t *nalu)
     }
     // 【注】函数开始已对last_byte_pos做减1处理，此时last_byte_pos表示相对于SODB的位置，然后赋值给nalu->len得到最终SODB的大小
     return last_byte_pos;
+}
+
+/**
+ 在rbsp_trailing_bits()之前是否有更多数据
+ [h264协议文档位置]：7.2 Specification of syntax functions, categories, and descriptors
+ */
+int more_rbsp_data(bs_t *b)
+{
+    // 0.是否已读到末尾
+    if (bs_eof(b)) {
+        return 0;
+    }
+
+    // 1.下一比特值是否为0，为0说明还有更多数据
+    if (bs_peek_u1(b) == 0) {
+        return 1;
+    }
+
+    // 2.到这说明下一比特值为1，这就要看看是否这个1就是rbsp_stop_one_bit，也即1后面是否全为0
+    bs_t bs_temp;
+    bs_clone(&bs_temp, b);
+
+    // 3.跳过刚才读取的这个1，逐比特查看1后面的所有比特，直到遇到另一个1或读到结束为止
+    bs_read_u1(&bs_temp);
+    while(!bs_eof(&bs_temp))
+    {
+        if (bs_read_u1(&bs_temp) == 1) { return 1; }
+    }
+
+    return 0;
 }
 
 nalu_t *allocNalu(int buff_size)

@@ -8,15 +8,52 @@
 
 #include "parset.h"
 #include "frame.h"
+#include "nalu.h"
 
 // 因为sps_id的取值范围为[0,31]，因此数组容量最大为32，详见7.4.2.1
 sps_t Sequence_Parameters_Set_Array[32];
+// 因为pps_id的取值范围为[0,255]，因此数组容量最大为256，详见7.4.2.2
+pps_t Picture_Parameters_Set_Array[256];
+
+sps_t *active_sps;  // 已经激活的sps
+pps_t *active_pps;  // 已经激活的pps
 
 void parse_sps_syntax_element(sps_t *sps, bs_t *b);
-void save_sps_as_available(sps_t *sps);
 void scaling_list(int *scalingList, int sizeOfScalingList, int *useDefaultScalingMatrixFlag, bs_t *b);
 void parse_vui_parameters(sps_t *sps, bs_t *b);
 void parse_vui_hrd_parameters(hrd_parameters_t *hrd, bs_t *b);
+
+void parse_pps_syntax_element(pps_t *pps, bs_t *b);
+
+
+void activeParameterSet(int pps_id)
+{
+    active_pps = &Picture_Parameters_Set_Array[pps_id];
+    active_sps = &Sequence_Parameters_Set_Array[active_pps->seq_parameter_set_id];
+}
+
+// 初始化sps结构体
+sps_t *allocSPS(void)
+{
+    sps_t *sps = calloc(1, sizeof(sps_t));
+    if (sps == NULL) {
+        fprintf(stderr, "%s\n", "Alloc SPS Error");
+        exit(-1);
+    }
+    return sps;
+}
+
+// 释放sps
+void freeSPS(sps_t *sps)
+{
+    free(sps);
+}
+
+void save_sps_as_available(sps_t *sps)
+{
+    printf("saving sps (id=%d).\n", sps->seq_parameter_set_id);
+    memcpy (&Sequence_Parameters_Set_Array[sps->seq_parameter_set_id], sps, sizeof (sps_t));
+}
 
 /**
  处理SPS，包含两步：
@@ -240,25 +277,151 @@ void parse_vui_hrd_parameters(hrd_parameters_t *hrd, bs_t *b)
     hrd->time_offset_length = bs_read_u(b, 5, "VUI: time_offset_length");
 }
 
-void save_sps_as_available(sps_t *sps)
-{
-    printf("saving sps (id=%d).\n", sps->seq_parameter_set_id);
-    memcpy (&Sequence_Parameters_Set_Array[sps->seq_parameter_set_id], sps, sizeof (sps_t));
-}
 
-// 初始化sps结构体
-sps_t *allocSPS(void)
+
+// 初始化pps结构体
+pps_t *allocPPS(void)
 {
-    sps_t *sps = calloc(1, sizeof(sps_t));
-    if (sps == NULL) {
-        fprintf(stderr, "%s\n", "Alloc SPS Error");
+    pps_t *pps = calloc(1, sizeof(pps_t));
+    if (pps == NULL) {
+        fprintf(stderr, "%s\n", "Alloc PPS Error");
         exit(-1);
     }
-    return sps;
+    pps->slice_group_id = NULL;
+    return pps;
 }
 
-// 释放sps
-void freeSPS(sps_t *sps)
+// 释放pps
+void freePPS(pps_t *pps)
 {
-    free(sps);
+    if (pps->slice_group_id != NULL) {
+        free (pps->slice_group_id);
+    }
+    free(pps);
 }
+
+void save_pps_as_available(pps_t *pps)
+{
+    // 2.更新同一个pps_id对应的pps时先释放上一个
+    if (Picture_Parameters_Set_Array[pps->pic_parameter_set_id].slice_group_id != NULL) {
+        free(Picture_Parameters_Set_Array[pps->pic_parameter_set_id].slice_group_id);
+    }
+    
+    // 0.保存sps
+    memcpy (&Picture_Parameters_Set_Array[pps->pic_parameter_set_id], pps, sizeof (pps_t));
+ 
+    // 1.不释放由pps->slice_group_id指向的内存，交由Picture_Parameters_Set_Array[pps->pps_id]使用
+    Picture_Parameters_Set_Array[pps->pic_parameter_set_id].slice_group_id = pps->slice_group_id;
+    pps->slice_group_id = NULL;
+}
+
+/**
+处理PPS，包含两步：
+先解析、后保存
+*/
+void processPPS(bs_t *b)
+{
+    pps_t *pps = allocPPS();
+    // 0.解析
+    parse_pps_syntax_element(pps, b);
+    // 1.保存
+    save_pps_as_available(pps);
+
+    freePPS(pps);
+}
+
+/**
+ 解析pps句法元素
+ [h264协议文档位置]：7.3.2.2 Picture parameter set RBSP syntax
+ */
+void parse_pps_syntax_element(pps_t *pps, bs_t *b)
+{
+    // 解析slice_group_id[]需用的比特个数
+    int bitsNumberOfEachSliceGroupID;
+    
+    pps->pic_parameter_set_id = bs_read_ue(b, "PPS: pic_parameter_set_id");
+    pps->seq_parameter_set_id = bs_read_ue(b, "PPS: seq_parameter_set_id");
+    pps->entropy_coding_mode_flag = bs_read_u(b, 1, "PPS: entropy_coding_mode_flag");
+    pps->bottom_field_pic_order_in_frame_present_flag = bs_read_u(b, 1, "PPS: bottom_field_pic_order_in_frame_present_flag");
+    
+    /*  —————————— FMO相关 Start  —————————— */
+    pps->num_slice_groups_minus1 = bs_read_ue(b, "PPS: num_slice_groups_minus1");//[0, 7]
+    if (pps->num_slice_groups_minus1 > 0) {
+        pps->slice_group_map_type = bs_read_ue(b, "PPS: slice_group_map_type");
+        if (pps->slice_group_map_type == 0) {
+            for (int i = 0; i <= pps->num_slice_groups_minus1; i++) {
+                pps->run_length_minus1[i] = bs_read_ue(b, "PPS: run_length_minus1[]");
+            }
+        } else if (pps->slice_group_map_type == 2) {
+            for (int i = 0; i < pps->num_slice_groups_minus1; i++) {
+                pps->top_left[i] = bs_read_ue(b, "PPS: top_left[]");
+                pps->bottom_right[i] = bs_read_ue(b, "PPS: bottom_right[]");
+            }
+        } else if (pps->slice_group_map_type == 3 ||
+                 pps->slice_group_map_type == 4 ||
+                 pps->slice_group_map_type == 5) {
+            pps->slice_group_change_direction_flag = bs_read_u(b, 1, "PPS: slice_group_change_direction_flag");
+            pps->slice_group_change_rate_minus1 = bs_read_ue(b, "PPS: slice_group_change_rate_minus1");
+        } else if (pps->slice_group_map_type == 6) {
+            // 1.计算解析slice_group_id[]需用的比特个数，Ceil( Log2( num_slice_groups_minus1 + 1 ) )
+            if (pps->num_slice_groups_minus1 + 1 > 4)
+                bitsNumberOfEachSliceGroupID = 3;
+            else if (pps->num_slice_groups_minus1 + 1 > 2)
+                bitsNumberOfEachSliceGroupID = 2;
+            else
+                bitsNumberOfEachSliceGroupID = 1;
+            
+            // 2.动态初始化指针pps->slice_group_id
+            pps->pic_size_in_map_units_minus1 = bs_read_ue(b, "PPS: pic_size_in_map_units_minus1");
+            pps->slice_group_id = calloc(pps->pic_size_in_map_units_minus1 + 1, 1);
+            if (pps->slice_group_id == NULL) {
+                fprintf(stderr, "%s\n", "parse_pps_syntax_element slice_group_id Error");
+                exit(-1);
+            }
+            
+            for (int i = 0; i <= pps->pic_size_in_map_units_minus1; i++) {
+                pps->slice_group_id[i] = bs_read_u(b, bitsNumberOfEachSliceGroupID, "PPS: slice_group_id[]");
+            }
+        }
+    }
+    /*  —————————— FMO相关 End  —————————— */
+    
+    pps->num_ref_idx_l0_default_active_minus1 = bs_read_ue(b, "PPS: num_ref_idx_l0_default_active_minus1");
+    pps->num_ref_idx_l1_default_active_minus1 = bs_read_ue(b, "PPS: num_ref_idx_l1_default_active_minus1");
+    
+    pps->weighted_pred_flag = bs_read_u(b, 1, "PPS: weighted_pred_flag");
+    pps->weighted_bipred_idc = bs_read_u(b, 2, "PPS: weighted_bipred_idc");
+    
+    pps->pic_init_qp_minus26 = bs_read_se(b, "PPS: pic_init_qp_minus26");
+    pps->pic_init_qs_minus26 = bs_read_se(b, "PPS: pic_init_qs_minus26");
+    pps->chroma_qp_index_offset = bs_read_se(b, "PPS: chroma_qp_index_offset");
+    
+    pps->deblocking_filter_control_present_flag = bs_read_u(b, 1, "PPS: deblocking_filter_control_present_flag");
+    pps->constrained_intra_pred_flag = bs_read_u(b, 1, "PPS: constrained_intra_pred_flag");
+    pps->redundant_pic_cnt_present_flag = bs_read_u(b, 1, "PPS: redundant_pic_cnt_present_flag");
+    
+    // 如果有更多rbsp数据
+    if (more_rbsp_data(b)) {
+        pps->transform_8x8_mode_flag = bs_read_u(b, 1, "PPS: transform_8x8_mode_flag");
+        pps->pic_scaling_matrix_present_flag = bs_read_u(b, 1, "PPS: pic_scaling_matrix_present_flag");
+        if (pps->pic_scaling_matrix_present_flag) {
+            int chroma_format_idc = Sequence_Parameters_Set_Array[pps->seq_parameter_set_id].chroma_format_idc;
+            int scalingListCycle = 6 + ((chroma_format_idc != YUV_4_4_4) ? 2 : 6) * pps->transform_8x8_mode_flag;
+            for (int i = 0; i < scalingListCycle; i++) {
+                pps->pic_scaling_list_present_flag[i] = bs_read_u(b, 1, "PPS: pic_scaling_list_present_flag[]");
+                if (pps->pic_scaling_list_present_flag[i]) {
+                    if (i < 6) {
+                        scaling_list(pps->ScalingList4x4[i], 16, &pps->UseDefaultScalingMatrix4x4Flag[i], b);
+                    } else {
+                        scaling_list(pps->ScalingList8x8[i-6], 64, &pps->UseDefaultScalingMatrix8x8Flag[i], b);
+                    }
+                }
+            }
+        }
+        pps->second_chroma_qp_index_offset = bs_read_se(b, "PPS: second_chroma_qp_index_offset");
+    } else {
+        pps->second_chroma_qp_index_offset = pps->chroma_qp_index_offset;
+    }
+}
+
+

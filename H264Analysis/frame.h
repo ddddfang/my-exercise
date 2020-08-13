@@ -19,4 +19,16 @@ typedef enum {
     YUV_4_4_4     =  3      //!< 4:4:4
 } Color_Space_Format;
 
+typedef enum
+{
+    // YUV
+    COLOR_PLANE_Y = 0,  // PLANE_Y
+    COLOR_PLANE_U = 1,  // PLANE_Cb
+    COLOR_PLANE_V = 2,  // PLANE_Cr
+    // RGB
+    COLOR_PLANE_G = 0,
+    COLOR_PLANE_B = 1,
+    COLOR_PLANE_R = 2
+} Color_Plane;
+
 #endif /* frame_h */
