@@ -117,10 +117,10 @@ typedef struct
     int first_mb_in_slice;                                // ue(v)
     int slice_type;                                       // ue(v)
     int pic_parameter_set_id;                             // ue(v)
-//  if( separate_colour_plane_flag = = 1 )
+//  if( separate_colour_plane_flag = = 1 )  //in SPS
         int colour_plane_id;                              // u(2)
     int frame_num;                                        // u(v)
-//  if( !frame_mbs_only_flag ) {
+//  if( !frame_mbs_only_flag ) {            //in SPS
         int field_pic_flag;                               // u(1)
 //      if( field_pic_flag )
             int bottom_field_flag;                        // u(1)

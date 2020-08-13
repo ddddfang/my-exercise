@@ -11,15 +11,14 @@
 #include "parset.h"
 #include "frame.h"
 
-extern slice_t *currentSlice;//main()中定义的
 
 // 解析前三个句法元素
-void parse_first_three_element(bs_t *b);
-void parse_rest_elememt_of_sliceHeader(bs_t *b);
-void parse_ref_pic_list_modification(bs_t *b);
-void alloc_ref_pic_list_modification_buffer(void);
-void parse_pred_weight_table(bs_t *b);
-void parse_dec_ref_pic_marking(bs_t *b);
+void parse_first_three_element(bs_t *b, slice_t *currentSlice);
+void parse_rest_elememt_of_sliceHeader(bs_t *b, slice_t *currentSlice);
+void parse_ref_pic_list_modification(bs_t *b, slice_t *currentSlice);
+void alloc_ref_pic_list_modification_buffer(slice_t *currentSlice);
+void parse_pred_weight_table(bs_t *b, slice_t *currentSlice);
+void parse_dec_ref_pic_marking(bs_t *b, slice_t *currentSlice);
 // 计算CeilLog2(inputVal)
 unsigned calculateCeilLog2(unsigned inputVal);
 
@@ -29,21 +28,21 @@ unsigned calculateCeilLog2(unsigned inputVal);
  2.去激活参数集
  3.解析剩余的句法元素
  */
-void processSliceHeader(bs_t *b)
+void processSliceHeader(bs_t *b, slice_t *currentSlice)
 {
     // 0.解析前三个句法元素
-    parse_first_three_element(b);
+    parse_first_three_element(b, currentSlice);
     // 1.激活参数集
     activeParameterSet(currentSlice->slice_header.pic_parameter_set_id);
     // 2.解析剩余的句法元素
-    parse_rest_elememt_of_sliceHeader(b);
+    parse_rest_elememt_of_sliceHeader(b, currentSlice);
 }
 
 /**
  解析slice_header头三个句法元素
  [h264协议文档位置]：7.3.3 Slice header syntax
  */
-void parse_first_three_element(bs_t *b)
+void parse_first_three_element(bs_t *b, slice_t *currentSlice)
 {
     currentSlice->slice_header.first_mb_in_slice = bs_read_ue(b, "SH: first_mb_in_slice");
     
@@ -61,7 +60,7 @@ void parse_first_three_element(bs_t *b)
  解析slice_header剩余句法元素
  [h264协议文档位置]：7.3.3 Slice header syntax
  */
-void parse_rest_elememt_of_sliceHeader(bs_t *b)
+void parse_rest_elememt_of_sliceHeader(bs_t *b, slice_t *currentSlice)
 {
     slice_header_t *slice_header = &currentSlice->slice_header;
     
@@ -81,7 +80,7 @@ void parse_rest_elememt_of_sliceHeader(bs_t *b)
         slice_header->field_pic_flag = bs_read_u(b, 1, "SH: field_pic_flag");
         if (slice_header->field_pic_flag) {
             slice_header->bottom_field_flag = bs_read_u(b, 1, "SH: bottom_field_flag");
-        }else {
+        } else {
             slice_header->bottom_field_flag = 0;
         }
     }
@@ -95,7 +94,7 @@ void parse_rest_elememt_of_sliceHeader(bs_t *b)
         slice_header->pic_order_cnt_lsb = bs_read_u(b, active_sps->log2_max_pic_order_cnt_lsb_minus4 + 4, "SH: pic_order_cnt_lsb");
         if (active_pps->bottom_field_pic_order_in_frame_present_flag && !slice_header->field_pic_flag) {
             slice_header->delta_pic_order_cnt_bottom = bs_read_se(b, "SH: delta_pic_order_cnt_bottom");
-        }else {
+        } else {
             slice_header->delta_pic_order_cnt_bottom = 0;
         }
     }
@@ -107,10 +106,10 @@ void parse_rest_elememt_of_sliceHeader(bs_t *b)
         if (active_pps->bottom_field_pic_order_in_frame_present_flag &&
             !slice_header->field_pic_flag) {
             slice_header->delta_pic_order_cnt[1] = bs_read_se(b, "SH: delta_pic_order_cnt[1]");
-        }else {
+        } else {
             slice_header->delta_pic_order_cnt[1] = 0;
         }
-    }else if (active_sps->pic_order_cnt_type == 1) {
+    } else if (active_sps->pic_order_cnt_type == 1) {
         slice_header->delta_pic_order_cnt[0] = 0;
         slice_header->delta_pic_order_cnt[1] = 0;
     }
@@ -139,24 +138,24 @@ void parse_rest_elememt_of_sliceHeader(bs_t *b)
     }
     
     // 1.解析参考图像列表修正句法元素
-    parse_ref_pic_list_modification(b);
+    parse_ref_pic_list_modification(b, currentSlice);
     
     if ((active_pps->weighted_pred_flag && (slice_header->slice_type == Slice_Type_P || slice_header->slice_type == Slice_Type_SP)) ||
         (active_pps->weighted_bipred_idc == 1 && slice_header->slice_type == Slice_Type_B)) {
         // 2.解析预测加权表格句法元素
-        parse_pred_weight_table(b);
+        parse_pred_weight_table(b, currentSlice);
     }
     
     if (currentSlice->nal_ref_idc != 0) {
         // 3.解析解码参考图像标识句法元素
-        parse_dec_ref_pic_marking(b);
+        parse_dec_ref_pic_marking(b, currentSlice);
     }
     
     if (active_pps->entropy_coding_mode_flag &&
         slice_header->slice_type != Slice_Type_I &&
         slice_header->slice_type != Slice_Type_SI) {
         slice_header->cabac_init_idc = bs_read_ue(b, "SH: cabac_init_idc");
-    }else {
+    } else {
         slice_header->cabac_init_idc = 0;
     }
     
@@ -174,12 +173,12 @@ void parse_rest_elememt_of_sliceHeader(bs_t *b)
         if (slice_header->disable_deblocking_filter_idc != 1) {
             slice_header->slice_alpha_c0_offset_div2 = bs_read_se(b, "SH: slice_alpha_c0_offset_div2");
             slice_header->slice_beta_offset_div2 = bs_read_se(b, "SH: slice_beta_offset_div2");
-        }else {
+        } else {
             // 设置默认值
             slice_header->slice_alpha_c0_offset_div2 = 0;
             slice_header->slice_beta_offset_div2 = 0;
         }
-    }else {
+    } else {
         // 设置默认值
         slice_header->disable_deblocking_filter_idc = 0;
         slice_header->slice_alpha_c0_offset_div2 = 0;
@@ -208,13 +207,13 @@ void parse_rest_elememt_of_sliceHeader(bs_t *b)
  解析ref_pic_list_modification()句法元素
  [h264协议文档位置]：7.3.3.1 Reference picture list modification syntax
  */
-void parse_ref_pic_list_modification(bs_t *b)
+void parse_ref_pic_list_modification(bs_t *b, slice_t *currentSlice)
 {
     rplm_t *rplm = &currentSlice->slice_header.ref_pic_list_modification;
     int i, val;
     
     // 0.初始化内存空间
-    alloc_ref_pic_list_modification_buffer();
+    alloc_ref_pic_list_modification_buffer(currentSlice);
     
     if (currentSlice->slice_header.slice_type != Slice_Type_I &&
         currentSlice->slice_header.slice_type != Slice_Type_SI) {
@@ -225,7 +224,7 @@ void parse_ref_pic_list_modification(bs_t *b)
                 val = rplm->modification_of_pic_nums_idc_lo[i] = bs_read_ue(b, "SH: modification_of_pic_nums_idc_lo");
                 if (val == 0 || val == 1) {
                     rplm->abs_diff_pic_num_minus1_lo[i] = bs_read_ue(b, "SH: abs_diff_pic_num_minus1_lo");
-                }else if (val == 2) {
+                } else if (val == 2) {
                     rplm->long_term_pic_num_lo[i] = bs_read_ue(b, "SH: long_term_pic_num_lo");
                 }
                 i++;
@@ -241,7 +240,7 @@ void parse_ref_pic_list_modification(bs_t *b)
                 val = rplm->modification_of_pic_nums_idc_l1[i] = bs_read_ue(b, "SH: modification_of_pic_nums_idc_l1");
                 if (val == 0 || val == 1) {
                     rplm->abs_diff_pic_num_minus1_l1[i] = bs_read_ue(b, "SH: abs_diff_pic_num_minus1_l1");
-                }else if (val == 2) {
+                } else if (val == 2) {
                     rplm->long_term_pic_num_l1[i] = bs_read_ue(b, "SH: long_term_pic_num_l1");
                 }
                 i++;
@@ -254,7 +253,7 @@ void parse_ref_pic_list_modification(bs_t *b)
  为ref_pic_list_modification()初始化内存空间
  [h264协议文档位置]：7.3.3.1 Reference picture list modification syntax
  */
-void alloc_ref_pic_list_modification_buffer()
+void alloc_ref_pic_list_modification_buffer(slice_t *currentSlice)
 {
     rplm_t *rplm = &currentSlice->slice_header.ref_pic_list_modification;
     
@@ -274,7 +273,7 @@ void alloc_ref_pic_list_modification_buffer()
             fprintf(stderr, "%s\n", "Alloc ref_pic_list_modification_lo Error");
             exit(-1);
         }
-    }else {
+    } else {
         rplm->modification_of_pic_nums_idc_lo = NULL;
         rplm->abs_diff_pic_num_minus1_lo = NULL;
         rplm->long_term_pic_num_lo = NULL;
@@ -294,7 +293,7 @@ void alloc_ref_pic_list_modification_buffer()
             fprintf(stderr, "%s\n", "Alloc ref_pic_list_modification_l1 Error");
             exit(-1);
         }
-    }else {
+    } else {
         rplm->modification_of_pic_nums_idc_l1 = NULL;
         rplm->abs_diff_pic_num_minus1_l1 = NULL;
         rplm->long_term_pic_num_l1 = NULL;
@@ -305,7 +304,7 @@ void alloc_ref_pic_list_modification_buffer()
  解析pred_weight_table()句法元素
  [h264协议文档位置]：7.3.3.2 Prediction weight table syntax
  */
-void parse_pred_weight_table(bs_t *b)
+void parse_pred_weight_table(bs_t *b, slice_t *currentSlice)
 {
     pred_weight_table_t *pw_table = &currentSlice->slice_header.pred_weight_table;
     
@@ -321,7 +320,7 @@ void parse_pred_weight_table(bs_t *b)
         if (pw_table->luma_weight_l0_flag) {
             pw_table->luma_weight_l0[i] = bs_read_se(b, "SH: luma_weight_l0");
             pw_table->luma_offset_l0[i] = bs_read_se(b, "SH: luma_offset_l0");
-        }else {
+        } else {
             pw_table->luma_weight_l0[i] = 1 << pw_table->luma_log2_weight_denom;
             pw_table->luma_offset_l0[i] = 0;
         }
@@ -333,7 +332,7 @@ void parse_pred_weight_table(bs_t *b)
                 if (pw_table->chroma_weight_l0_flag) {
                     pw_table->chroma_weight_l0[i][j] = bs_read_se(b, "SH: chroma_weight_l0");
                     pw_table->chroma_offset_l0[i][j] = bs_read_se(b, "SH: chroma_offset_l0");
-                }else {
+                } else {
                     pw_table->chroma_weight_l0[i][j] = 1 << pw_table->chroma_log2_weight_denom;
                     pw_table->chroma_offset_l0[i][j] = 0;
                 }
@@ -349,7 +348,7 @@ void parse_pred_weight_table(bs_t *b)
             if (pw_table->luma_weight_l1_flag) {
                 pw_table->luma_weight_l1[i] = bs_read_se(b, "SH: luma_weight_l1");
                 pw_table->luma_offset_l1[i] = bs_read_se(b, "SH: luma_offset_l1");
-            }else {
+            } else {
                 pw_table->luma_weight_l1[i] = 1 << pw_table->luma_log2_weight_denom;
                 pw_table->luma_offset_l1[i] = 0;
             }
@@ -361,7 +360,7 @@ void parse_pred_weight_table(bs_t *b)
                     if (pw_table->chroma_weight_l1_flag) {
                         pw_table->chroma_weight_l1[i][j] = bs_read_se(b, "SH:   chroma_weight_l1");
                         pw_table->chroma_offset_l1[i][j] = bs_read_se(b, "SH: chroma_offset_l1");
-                    }else {
+                    } else {
                         pw_table->chroma_weight_l1[i][j] = 1 << pw_table->chroma_log2_weight_denom;
                         pw_table->chroma_offset_l1[i][j] = 0;
                     }
@@ -375,7 +374,7 @@ void parse_pred_weight_table(bs_t *b)
  解析dec_ref_pic_marking()句法元素
  [h264协议文档位置]：7.3.3.3 Decoded reference picture marking syntax
  */
-void parse_dec_ref_pic_marking(bs_t *b)
+void parse_dec_ref_pic_marking(bs_t *b, slice_t *currentSlice)
 {
     dec_ref_pic_marking_t *drp_marking = &currentSlice->slice_header.dec_ref_pic_marking;
     int i, val;
@@ -383,7 +382,7 @@ void parse_dec_ref_pic_marking(bs_t *b)
     if (currentSlice->idr_flag) {
         drp_marking->no_output_of_prior_pics_flag = bs_read_u(b, 1, "SH: no_output_of_prior_pics_flag");
         drp_marking->long_term_reference_flag = bs_read_u(b, 1, "SH: long_term_reference_flag");
-    }else {
+    } else {
         drp_marking->adaptive_ref_pic_marking_mode_flag = bs_read_u(b, 1, "SH: adaptive_ref_pic_marking_mode_flag");
         if (drp_marking->adaptive_ref_pic_marking_mode_flag) {
             i = 0;
@@ -415,9 +414,11 @@ unsigned calculateCeilLog2(unsigned inputVal)
     unsigned tmpVal = inputVal - 1;
     unsigned ret = 0;
     
-    while( tmpVal != 0 ) {
+    while ( tmpVal != 0 ) {
         tmpVal >>= 1;
         ret++;
     }
     return ret;
 }
+
+

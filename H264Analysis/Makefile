@@ -4,7 +4,7 @@ MODULE_OBJS += decode.o nalu.o stream.o parset.o slice.o header.o
 
 OUT_DIR = .
 
-PUBLIC_FLAGS = -g -O0 -Wall
+PUBLIC_FLAGS = -g -O0 -Wall -DTRACE=1
 LDFLAGS = -lm -lz -lpthread
 MODULE_INC = -I.
 

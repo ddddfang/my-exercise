@@ -66,6 +66,34 @@ void traceInput(const char *traceString, uint32_t eleValue)
     // 3.将缓冲区的内容输出到文件中
     fflush(trace_fp);
 }
+
+#include <stdarg.h>
+#include <string.h>
+void tracePrintf(const char *fmt, ...)
+{
+    va_list marker;
+    char buffer[512];
+    int nLen;
+
+    va_start(marker, fmt);
+    vsnprintf(buffer, 512, fmt, marker);
+    va_end(marker);
+
+    nLen = strlen(buffer);
+
+    if(buffer[nLen -1] != '\n')
+    {
+        buffer[nLen] = '\n';
+        buffer[nLen + 1] = '\0';
+    }
+
+    if(trace_fp)
+    {
+        fprintf(trace_fp, "%s", buffer);
+        fflush(trace_fp);
+    }
+}
+
 #endif
 
 

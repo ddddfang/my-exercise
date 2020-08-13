@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "stream.h"
 
@@ -41,6 +42,7 @@ static inline bs_t* bs_init(bs_t* b, uint8_t* buf, size_t size)
 static inline bs_t* bs_new(uint8_t* buf, size_t size)
 {
     bs_t* b = (bs_t*)malloc(sizeof(bs_t));
+    assert(b != NULL);
     bs_init(b, buf, size);
     return b;
 }

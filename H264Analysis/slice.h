@@ -28,8 +28,8 @@ typedef struct
     slice_header_t slice_header;
 } slice_t;
 
-void processSliceHeader(bs_t *b);
-void processSlice(bs_t *b);
+void processSliceHeader(bs_t *b, slice_t *currentSlice);
+void processSlice(bs_t *b, slice_t *currentSlice);
 
 slice_t *allocSlice(void); // 初始化slice结构体
 void freeSlice(slice_t *slice); // 释放slice

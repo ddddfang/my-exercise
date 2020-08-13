@@ -12,8 +12,6 @@
 #include "stream.h"
 #include "slice.h"
 
-slice_t *currentSlice; // 当前正在解码的slice 
-
 int main(int argc, const char * argv[]) {
     if (argc < 2) {
         printf("usage : ./xxx <h264file>\n");
@@ -26,8 +24,6 @@ int main(int argc, const char * argv[]) {
 
     // 1. 开辟nalu_t保存nalu_header和SODB
     nalu_t *nalu = allocNalu(MAX_NALU_SIZE);
-
-    currentSlice = allocSlice();
 
     int nalu_i = 0;
     int curr_nal_start = 0;  // 当前找到的nalu起始位置
@@ -43,7 +39,6 @@ int main(int argc, const char * argv[]) {
         nalu_i++;
     }
 
-    freeSlice(currentSlice);
     freeNalu(nalu);
     freeFilebuffer();
 

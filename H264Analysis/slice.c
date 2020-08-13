@@ -9,10 +9,10 @@
 #include "slice.h"
 #include <stdlib.h>
 
-void processSlice(bs_t *b)
+void processSlice(bs_t *b, slice_t *currentSlice)
 {
     // 0.先解析slice_header
-    processSliceHeader(b);
+    processSliceHeader(b, currentSlice);
 }
 
 // 初始化slice结构体

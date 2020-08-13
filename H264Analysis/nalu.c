@@ -13,8 +13,6 @@
 #include "parset.h"
 #include "slice.h"
 
-extern slice_t *currentSlice;
-
 /**
  找到h264码流中的nalu
  [h264协议文档位置]：Annex B
@@ -100,9 +98,8 @@ void read_nal_unit(nalu_t *nalu)
     nalu->nal_unit_type = bs_read_u(bs, 5, NULL);
     
 #if TRACE
-    fprintf (trace_fp, "\n\nAnnex B NALU len %d, forbidden_bit %d, nal_reference_idc %d, nal_unit_type %d\n\n",
+    tracePrintf("\n\nAnnex B NALU len %d, forbidden_bit %d, nal_reference_idc %d, nal_unit_type %d\n\n",
         nalu_size, nalu->forbidden_zero_bit, nalu->nal_ref_idc, nalu->nal_unit_type);
-    fflush (trace_fp);
 #endif
     
     switch (nalu->nal_unit_type) {
@@ -118,10 +115,16 @@ void read_nal_unit(nalu_t *nalu)
             
         case H264_NAL_SLICE:
         case H264_NAL_IDR_SLICE:
-            currentSlice->idr_flag = (nalu->nal_unit_type == H264_NAL_IDR_SLICE);
-            currentSlice->nal_ref_idc = nalu->nal_ref_idc;
-            nalu->len = rbsp_to_sodb(nalu);
-            processSlice(bs);
+            {
+                slice_t *currentSlice = allocSlice();
+
+                currentSlice->idr_flag = (nalu->nal_unit_type == H264_NAL_IDR_SLICE);
+                currentSlice->nal_ref_idc = nalu->nal_ref_idc;
+                nalu->len = rbsp_to_sodb(nalu);
+                processSlice(bs, currentSlice);
+
+                freeSlice(currentSlice);
+            }
             break;
             
         case H264_NAL_DPA:
