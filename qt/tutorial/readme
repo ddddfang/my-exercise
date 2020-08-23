@@ -14,5 +14,8 @@ https://doc-snapshots.qt.io/qt5-dev/qtexamplesandtutorials.html
 
 001 展示一个打印qt版本的最基本的程序,c++11
 002 展示一个使用qt的最基本GUI程序，使用的是qmake
-使用 /home/fang/Qt5.12.0/5.12.0/gcc_64/bin/qmake -project 生成一个 <当前目录名>.pro 的模板
+    使用 /home/fang/Qt5.12.0/5.12.0/gcc_64/bin/qmake -project 生成一个 <当前目录名>.pro 的模板
+    并在其基础上添加 QT += widgets core gui
+003 展示一个qt的QString用法，因为是一个console程序，不需要gui界面，所以在.pro中修改去掉了gui
+
 
