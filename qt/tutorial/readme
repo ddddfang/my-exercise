@@ -4,6 +4,7 @@ http://zetcode.com/gui/pyqt5/
 http://zetcode.com/gui/qtquick/
 https://doc-snapshots.qt.io/qt5-dev/qtexamplesandtutorials.html
 
+https://doc-snapshots.qt.io/qt5-5.11/qlocale.html
 
 #看起来在 pkg-config 注册的是qt4,而不是后来我安装的qt5
 #不过没关系,我在make时候指定头文件和路径即可
@@ -17,5 +18,6 @@ https://doc-snapshots.qt.io/qt5-dev/qtexamplesandtutorials.html
     使用 /home/fang/Qt5.12.0/5.12.0/gcc_64/bin/qmake -project 生成一个 <当前目录名>.pro 的模板
     并在其基础上添加 QT += widgets core gui
 003 展示一个qt的QString用法，因为是一个console程序，不需要gui界面，所以在.pro中修改去掉了gui
-
+004 展示一个qt的 date time用法，是一个console程序，不需要gui界面
+    主要就是 QDate QTime QDateTime 三个类的使用
 
