@@ -5,6 +5,37 @@
 #include <QMap>
 #include <algorithm>
 
+
+class book {
+public:
+    book(QString author, QString title);
+    QString getAuthor() const;
+    QString getTitle() const;
+private:
+    QString author;
+    QString title;
+};
+
+book::book(QString author, QString title) {
+    this->author = author;
+    this->title = title;
+}
+
+QString book::getAuthor() const {
+    return this->author;
+}
+
+QString book::getTitle() const {
+    return this->title;
+}
+
+bool comapreTitle(const book &b1, const book &b2) {
+    return b1.getTitle() < b2.getTitle();
+}
+
+
+
+
 int main(void)
 {
     QTextStream out(stdout);
@@ -49,6 +80,17 @@ int main(void)
             out << di << endl;
         }
         out << endl;
+
+        QList<book> books = {
+            book("Jason", "The Wild"),
+            book("Leo", "War and peace"),
+            book("Wiliam", "Hamlet"),
+            book("Gue", "Yne vie")
+        };
+        std::sort(books.begin(), books.end(), comapreTitle);
+        for (book bi : books) {
+            out << bi.getAuthor() << ":" << bi.getTitle() << endl;
+        }
     }
     {
         QString s = "jensen,yann,friday,fabio,linke,hanson,diro";

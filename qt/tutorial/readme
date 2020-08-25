@@ -25,4 +25,5 @@ https://doc-snapshots.qt.io/qt5-5.11/qlocale.html
     QList 兼具QLinkedList的快速插入删除和QVector的快速访问,qt 最常用的顺序容器,三者区别: https://doc-snapshots.qt.io/qt5-5.11/qlist.html#details
     QSet 集合
     QMap 键值对集合
+006 展示文件和目录相关的操作,包括读写文件,列出当前目录下所有文件等
 
