@@ -20,4 +20,9 @@ https://doc-snapshots.qt.io/qt5-5.11/qlocale.html
 003 展示一个qt的QString用法，因为是一个console程序，不需要gui界面，所以在.pro中修改去掉了gui
 004 展示一个qt的 date time用法，是一个console程序，不需要gui界面
     主要就是 QDate QTime QDateTime 三个类的使用
+005 展示qt中的容器用法, QVector QList QStringList QSet QMap, c++标准库中的STL也提供了这些容器，都是可用的
+    QVector 动态数组
+    QList 兼具QLinkedList的快速插入删除和QVector的快速访问,qt 最常用的顺序容器,三者区别: https://doc-snapshots.qt.io/qt5-5.11/qlist.html#details
+    QSet 集合
+    QMap 键值对集合
 
