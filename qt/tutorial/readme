@@ -28,4 +28,5 @@ https://doc-snapshots.qt.io/qt5-5.11/qlocale.html
 006 展示文件和目录相关的操作,包括读写文件,列出当前目录下所有文件等
 007 展示了第一个qt的gui程序,包括 cursor pushbutton label gridlayout 用法,
     采用自定义的Qwidget并且和main()分离是以后常用的方式
+008 展示了 qt 的 menu,toolbar 等控件的用法,实现了一个基本的应用程序骨架
 
