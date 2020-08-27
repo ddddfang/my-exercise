@@ -6,8 +6,108 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     initToolBar();
     initMenuBar();
 
-    QTextEdit *edit = new QTextEdit(this);
-    setCentralWidget(edit);
+    //-----------------------------------------------------------------------
+    //QLineEdit *ledit_name = new QLineEdit(this);
+    //QLineEdit *ledit_phone = new QLineEdit(this);
+    //QLineEdit *ledit_addr = new QLineEdit(this);
+    //QFormLayout *fl = new QFormLayout();    //专门用于表单的 layout
+    //fl->setLabelAlignment(Qt::AlignRight|Qt::AlignVCenter);
+    //fl->addRow("Name:", ledit_name);
+    //fl->addRow("Phone:", ledit_phone);
+    //fl->addRow("Addr:", ledit_addr);
+
+    //QTextEdit *edit = new QTextEdit(this);
+    ////setCentralWidget(edit);
+
+    //QListWidget *lw = new QListWidget(this);
+    //lw->addItem("monday");
+    //lw->addItem("tuesday");
+    //lw->addItem("wednesday");
+    //lw->addItem("thrusday");
+
+    //QHBoxLayout *hbox = new QHBoxLayout();          
+    //QPushButton *btn_yes = new QPushButton("yes", this);
+    //btn_yes->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding); //这个按钮的宽高都是扩展的,所以size自动变化
+    //QPushButton *btn_no = new QPushButton("no", this);
+    //btn_no->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    ////hbox->addStretch(1);    //可伸缩的空格
+    ////hbox->addWidget(lw, 1);    //比例因子为 1
+    //hbox->addWidget(btn_yes, 1);    //比例因子为 1
+    //hbox->addWidget(btn_no, 0, Qt::AlignRight); //比例因子为 0 保持default大小
+    ////hbox->addStretch(1);    //可伸缩的空格
+
+    ////new QVBoxLayout(this); 通过this指针设置了QLayout的所属组件，也就是隐式的设置了这个QWidget的布局,
+    ////所以 cw->setLayout(vbox); 后会报告 "QLayout: Attempting to add QLayout "" to MyWidget "", which already has a layout"
+    ////的警告,去掉 this 指针可以避免这种情况
+    ////参看 https://www.cnblogs.com/csuftzzk/p/qlayout_warnings.html
+
+    //QVBoxLayout *vbox = new QVBoxLayout();          
+    //vbox->setSpacing(1);
+
+    //vbox->addLayout(fl);
+    //vbox->addWidget(edit);
+    //vbox->addWidget(lw);
+    ////vbox->addSpacing(15);
+    //vbox->addLayout(hbox);
+
+    //QWidget *cw = new QWidget(this);
+    //cw->setLayout(vbox);
+    //setCentralWidget(cw);
+
+    //------------------------------------
+    //QGridLayout *gl = new QGridLayout();
+    //gl->setSpacing(2);
+    //QList<QString> lbls= {
+    //    "7", "8", "9", "/",
+    //    "4", "5", "6", "*",
+    //    "1", "2", "3", "-",
+    //    "0", ".", "=", "+"
+    //};
+    //int pos = 0;
+    //for (int i = 0; i < 4; i++) {
+    //    for (int j = 0; j < 4; j++) {
+    //        QPushButton *btn = new QPushButton(lbls[pos], this);
+    //        btn->setFixedSize(40, 40);
+    //        gl->addWidget(btn, i, j);
+    //        pos++;
+    //    }
+    //}
+
+    //QWidget *cw = new QWidget(this);
+    //cw->setLayout(gl);
+    //setCentralWidget(cw);
+
+    //------------------------------------
+    QGridLayout *gl = new QGridLayout();
+    gl->setVerticalSpacing(15);
+    gl->setHorizontalSpacing(10);
+
+    QLabel *lbl_title = new QLabel("Title", this);
+    lbl_title->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+    gl->addWidget(lbl_title, 0, 0, 1, 1);
+
+    QLineEdit *ledit_title = new QLineEdit(this);
+    gl->addWidget(ledit_title, 0, 1, 1, 1);
+
+    QLabel *lbl_author = new QLabel("Author", this);
+    lbl_title->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+    gl->addWidget(lbl_author, 1, 0, 1, 1);
+
+    QLineEdit *ledit_author = new QLineEdit(this);
+    gl->addWidget(ledit_author, 1, 1, 1, 1);
+
+    QLabel *lbl_review = new QLabel("Review", this);
+    lbl_title->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+    gl->addWidget(lbl_review, 2, 0, 1, 1);
+
+    QTextEdit *ledit_review = new QTextEdit(this);
+    gl->addWidget(ledit_review, 2, 1, 3, 1);    //QTextEdit 占据3行1列
+
+    QWidget *cw = new QWidget(this);
+    cw->setLayout(gl);
+    setCentralWidget(cw);
+    //-----------------------------------------------------------------------
 
     initStatusBar();
 }

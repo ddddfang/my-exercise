@@ -5,15 +5,21 @@
 #include <QIcon>
 #include <QFrame>
 #include <QGridLayout>
-#include <QPushButton>
-#include <QLabel>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QFormLayout>
 
 #include <QMenu>
 #include <QMenuBar>
+#include <QToolBar>
 #include <QMainWindow>
 #include <QStatusBar>
+
 #include <QTextEdit>
-#include <QToolBar>
+#include <QPushButton>
+#include <QListWidget>
+#include <QLabel>
+#include <QLineEdit>
 
 
 //class MyWidget : public QWidget {
