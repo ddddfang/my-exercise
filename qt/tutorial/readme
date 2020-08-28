@@ -31,4 +31,7 @@ https://doc-snapshots.qt.io/qt5-5.11/qlocale.html
 008 展示了 qt 的 menu,toolbar 等控件的用法,
     并且展示了各种 layout 的使用方法,
     算是一个基本的应用程序骨架
+009 在008的基础上 去掉了关于layout的注意事项
+    添加了对各种事件的响应, timer响应 keypress响应
+    展示了各种控件的用法
 
