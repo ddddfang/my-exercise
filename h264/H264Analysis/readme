@@ -3,3 +3,5 @@ https://blog.csdn.net/houxiaoni01/article/details/100013749
 
 https://github.com/Gosivn/H264Analysis.git
 
+
+在 my-demos/x264-demo 下有一个读取yuv文件并利用x264将其编码为h264码流的 demo
