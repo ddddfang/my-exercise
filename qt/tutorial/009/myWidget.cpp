@@ -4,6 +4,7 @@
 #include <QMoveEvent>
 #include <QTime>
 #include <QFont>
+#include <QInputDialog>
 
 MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
 
@@ -30,14 +31,46 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     QTime qtime = QTime::currentTime();
     QString stime = qtime.toString();
     lbl_time->setText(stime);
-    startTimer(1000);   //每 1000 ms 触发一次 timerEvent
+    startTimer(1000);   //每 1000 ms 触发一次 timerEvent, 这个 timer 应该是 mainwindow默认创建了的
 
     /* QListWidget */
-    QListWidget *lw = new QListWidget(this);
-    lw->addItem("monday");
-    lw->addItem("tuesday");
-    lw->addItem("wednesday");
-    lw->addItem("thrusday");
+    this->lw = new QListWidget(this);
+    this->lw->addItem("monday");
+    this->lw->addItem("tuesday");
+    this->lw->addItem("wednesday");
+    this->lw->addItem("thrusday");
+
+    QHBoxLayout *hbox_lw = new QHBoxLayout();          
+    this->btn_add_for_lw = new QPushButton("add", this);
+    this->btn_remove_for_lw = new QPushButton("remove", this);
+    this->btn_rename_for_lw = new QPushButton("rename", this);
+    this->btn_clear_for_lw = new QPushButton("clear", this);
+    btn_add_for_lw->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    btn_remove_for_lw->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    btn_rename_for_lw->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    btn_clear_for_lw->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    connect(btn_add_for_lw, &QPushButton::clicked, this, &MyWidget::onBtnAddLw);
+    connect(btn_remove_for_lw, &QPushButton::clicked, this, &MyWidget::onBtnRemoveLw);
+    connect(btn_rename_for_lw, &QPushButton::clicked, this, &MyWidget::onBtnRenameLw);
+    connect(btn_clear_for_lw, &QPushButton::clicked, this, &MyWidget::onBtnClearLw);
+    hbox_lw->addWidget(btn_add_for_lw);
+    hbox_lw->addWidget(btn_remove_for_lw);
+    hbox_lw->addWidget(btn_rename_for_lw);
+    hbox_lw->addWidget(btn_clear_for_lw);
+
+    /* QProgressBar timer */
+    QHBoxLayout *hbox_pbar = new QHBoxLayout();          
+    this->progress_bar = new QProgressBar();
+    this->timer_for_pbar = new QTimer(this);
+    this->btn_start_for_pbar = new QPushButton("start", this);
+    this->btn_stop_for_pbar = new QPushButton("stop", this);
+    connect(timer_for_pbar, &QTimer::timeout, this, &MyWidget::onTimerPbar);
+    connect(btn_start_for_pbar, &QPushButton::clicked, this, &MyWidget::onBtnStart);
+    connect(btn_stop_for_pbar, &QPushButton::clicked, this, &MyWidget::onBtnStop);
+    hbox_pbar->addWidget(progress_bar);
+    hbox_pbar->addWidget(btn_start_for_pbar);
+    hbox_pbar->addWidget(btn_stop_for_pbar);
+    this->progress = 0;
 
     /* QSlider */
     QHBoxLayout *hbox_score = new QHBoxLayout();          
@@ -72,9 +105,9 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
 
     /* QCheckBox */
     QHBoxLayout *hbox_for_check = new QHBoxLayout();  
-    QCheckBox *checkb = new QCheckBox("test check", this);
+    this->checkb = new QCheckBox("test check", this);
     checkb->setCheckState(Qt::Checked);
-    QLabel *lbl_for_check = new QLabel("checked", this);
+    this->lbl_for_check = new QLabel("checked 1", this);
     hbox_for_check->addWidget(checkb, 0, Qt::AlignLeft | Qt::AlignTop);
     hbox_for_check->addWidget(lbl_for_check, 0, Qt::AlignRight | Qt::AlignVCenter);
     connect(checkb, &QCheckBox::stateChanged, this, &MyWidget::onCheckBoxStateChange);
@@ -92,6 +125,26 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     hbox->addWidget(btn_yes);
     hbox->addWidget(btn_no);
 
+    /* QPixMap on QLabel */
+    QLabel *lbl_pixmap = new QLabel(this);
+    QPixmap pixmap("./te.jpg");
+    lbl_pixmap->setPixmap(pixmap);  //在 label 上显示 图片
+
+    /* 似乎显示有点问题 */
+    //QFrame *frame1 = new QFrame(this);
+    //frame1->setFrameShape(QFrame::Box); //QFrame::Box
+    //QFrame *frame2 = new QFrame(this);
+    //frame2->setFrameShape(QFrame::Box);//QFrame::StyledPanel
+    //QFrame *frame3 = new QFrame(this);
+    //frame1->setFrameShape(QFrame::Box);
+    //QSplitter *splt1 = new QSplitter(Qt::Horizontal, this);
+    //splt1->addWidget(frame1);
+    //splt1->addWidget(frame2);
+    //QSplitter *splt2 = new QSplitter(Qt::Vertical, this);
+    //splt2->addWidget(splt1);
+    //splt2->addWidget(frame3);
+    //QList<int> sizes = {500, 100};
+    //splt2->setSizes(sizes);
 
     QVBoxLayout *vbox = new QVBoxLayout();          
     vbox->setSpacing(1);
@@ -99,11 +152,15 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     vbox->addWidget(edit);
     vbox->addWidget(lbl_time);
     vbox->addWidget(lw);
+    vbox->addLayout(hbox_lw);
+    vbox->addLayout(hbox_pbar);
     vbox->addLayout(hbox_score);
     vbox->addLayout(hbox_score2);
     vbox->addLayout(hbox_distri);
     vbox->addLayout(hbox_for_check);
     vbox->addLayout(hbox);
+    vbox->addWidget(lbl_pixmap);
+    //vbox->addWidget(splt2);
 
     QWidget *cw = new QWidget(this);
     cw->setLayout(vbox);
@@ -185,6 +242,13 @@ void MyWidget::onBtnNo() {
 
 void MyWidget::onCheckBoxStateChange() {
 
+    if (this->checkb->isChecked()) {
+        std:: cout << "checkb->isChecked 1" << std::endl;
+        this->lbl_for_check->setText("checked 1");
+    } else {
+        std:: cout << "checkb->isChecked 0" << std::endl;
+        this->lbl_for_check->setText("checked 0");
+    }
 }
 
 void MyWidget::keyPressEvent(QKeyEvent *e) {
@@ -209,3 +273,88 @@ void MyWidget::timerEvent(QTimerEvent *e) {
     QString stime = qtime.toString();
     lbl_time->setText(stime);
 }
+
+void MyWidget::onBtnAddLw() {
+    std::cout << "onBtnAddLw." << std::endl;
+    QString input_item = QInputDialog::getText(this, "Item", "Enter new item");
+    input_item = input_item.simplified();   //去掉可能的无用的空格
+    if (!input_item.isEmpty()) {
+        this->lw->addItem(input_item);
+        int r = this->lw->count() - 1;
+        this->lw->setCurrentRow(r);
+    }
+}
+
+void MyWidget::onBtnRemoveLw() {
+    std::cout << "onBtnRemoveLw." << std::endl;
+    //QListWidgetItem *cur_item = this->lw->currentItem();
+    int cur_row = this->lw->currentRow();
+
+    if (cur_row != -1) {
+        QListWidgetItem *item = this->lw->takeItem(cur_row);    //将指定行对应的 row 从 listwidget 移除并返回
+        delete item;
+    }
+}
+
+void MyWidget::onBtnRenameLw() {
+    QListWidgetItem *cur_item = this->lw->currentItem();
+    
+    QString cur_text = cur_item->text();
+    QString new_text = QInputDialog::getText(this, "Item", "Enter new item", QLineEdit::Normal, cur_text);
+    std::cout << "onBtnRenameLw ("<<cur_text.toStdString()<<")<-("<<new_text.toStdString()<<")." << std::endl;
+    new_text = new_text.simplified();
+
+    if (!new_text.isEmpty()) {
+        int cur_row = this->lw->row(cur_item);
+        QListWidgetItem *item = this->lw->takeItem(cur_row);    //将指定行对应的 row 从 listwidget 移除并返回
+        delete item;
+        this->lw->insertItem(cur_row, new_text);    //在指定行前插入新的行
+        this->lw->setCurrentRow(cur_row);
+    }
+}
+
+void MyWidget::onBtnClearLw() {
+    std::cout << "onBtnClearLw." << std::endl;
+
+    if (this->lw->count() > 0) {
+        this->lw->clear();
+    }
+}
+
+void MyWidget::onTimerPbar() {  //update progress
+    std::cout << "onTimerPbar." << std::endl;
+
+    progress++;
+    if (progress <= 100) {  //进度条默认最大值就是100
+        progress_bar->setValue(progress);
+    } else {
+        timer_for_pbar->stop();
+        btn_start_for_pbar->setEnabled(true);
+        btn_stop_for_pbar->setEnabled(false);
+    }
+}
+
+void MyWidget::onBtnStart() {   //start timer
+    std::cout << "onBtnStart." << std::endl;
+    if (progress >= 100) {
+        progress = 0;
+        progress_bar->setValue(progress);
+    }
+
+    if (!timer_for_pbar->isActive()) {
+        btn_start_for_pbar->setEnabled(false);
+        btn_stop_for_pbar->setEnabled(true);
+        timer_for_pbar->start(100); //每 100 ms 触发一次 timeout
+    }
+}
+
+void MyWidget::onBtnStop() {    //stop timer
+    std::cout << "onBtnStop." << std::endl;
+    if (timer_for_pbar->isActive()) {
+        btn_stop_for_pbar->setEnabled(false);
+        btn_start_for_pbar->setEnabled(true);
+        timer_for_pbar->stop();
+    }
+
+}
+

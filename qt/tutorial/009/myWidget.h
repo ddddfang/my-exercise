@@ -24,6 +24,10 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QProgressBar>
+#include <QTimer>
+#include <QPixmap>
+#include <QSplitter>
 
 
 //class MyWidget : public QWidget {
@@ -43,6 +47,14 @@ private slots:
     void onBtnNo();
     void onCheckBoxStateChange();
 
+    void onBtnAddLw();
+    void onBtnRemoveLw();
+    void onBtnRenameLw();
+    void onBtnClearLw();
+
+    void onTimerPbar();
+    void onBtnStart();
+    void onBtnStop();
 private:
     void initToolBar();
     void initMenuBar();
@@ -63,6 +75,21 @@ private:
     QLineEdit *ledit_name;
     QLineEdit *ledit_phone;
     QLineEdit *ledit_addr;
+
+    QCheckBox *checkb;
+    QLabel *lbl_for_check;
+
+    QListWidget *lw;
+    QPushButton *btn_add_for_lw;
+    QPushButton *btn_remove_for_lw;
+    QPushButton *btn_rename_for_lw;
+    QPushButton *btn_clear_for_lw;
+
+    QProgressBar *progress_bar;
+    QTimer *timer_for_pbar;
+    QPushButton *btn_start_for_pbar;
+    QPushButton *btn_stop_for_pbar;
+    int progress;
 
 protected:
     void keyPressEvent(QKeyEvent *e);   //处理按键事件
