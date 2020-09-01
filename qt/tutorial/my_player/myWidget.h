@@ -28,6 +28,7 @@
 #include <QTimer>
 #include <QPixmap>
 #include <QSplitter>
+#include <QPainter>
 
 #include "readerThread.h"
 
@@ -38,6 +39,7 @@ class MyWidget : public QMainWindow {   //主窗口我们选择从 QMainWindow �
 
 public:
     MyWidget(QWidget *parent = 0);
+    ~MyWidget();
 
 private slots:
     void onActOpen();
@@ -49,7 +51,7 @@ private slots:
     void onBtnStartStop();
     void onSeek(int);
 
-    void gotSigNum(int);
+    void gotSigFrame(QImage);
 
 private:
     void initToolBar();
@@ -74,8 +76,11 @@ private:
     QLabel *lbl_progress;
 
     readerThread *reader;
+    bool b_started;
+    QImage mImg;
 
 protected:
     void keyPressEvent(QKeyEvent *e);   //处理按键事件
     void moveEvent(QMoveEvent *e);      //处理窗口移动事件
+    //void paintEvent(QPaintEvent *e);
 };

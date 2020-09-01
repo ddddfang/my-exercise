@@ -4,17 +4,7 @@
 #include <QMutex>
 #include <QImage>
 
-//#include <iostream>
-//#include <stdio.h>
-//extern "C"
-//{
-//#include <libavcodec/avcodec.h>
-//#include <libavformat/avformat.h>
-//#include <libavfilter/avfilter.h>
-//#include <libavutil/pixfmt.h>
-//#include <libswscale/swscale.h>
-//}
-
+#include "myUtil.h"
 
 class readerThread : public QThread {
 
@@ -23,6 +13,7 @@ class readerThread : public QThread {
 public:
     explicit readerThread();
     ~readerThread();
+    void pause(bool);
     void stop();
     void setFilePath(QString path);
 
@@ -30,10 +21,11 @@ protected:
     void run(); //这是 QThread 定义的方法
 
 signals:
-    void sigNum(int);
+    void sigGotFrame(QImage);
 
 private:
     bool mStop;     //
+    bool mPause;     //
     QMutex mMutex;  //
     QString mFilePath;   //local file path
 };

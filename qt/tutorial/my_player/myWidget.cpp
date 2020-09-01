@@ -60,10 +60,21 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
 
     //start reader thread
     reader = new readerThread();
-    connect(reader, SIGNAL(sigNum(int)), this, SLOT(gotSigNum(int)));
+    connect(reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
+    b_started = false;
     //-----------------------------------------------------------------------
 
     initStatusBar();
+}
+
+MyWidget::~MyWidget() {
+    if (this->reader) {
+        if (this->reader->isRunning()) {
+            this->reader->stop();
+            this->reader->wait();    //thread join
+        }
+        delete this->reader;
+    }
 }
 
 void MyWidget::initToolBar() {
@@ -109,7 +120,8 @@ void MyWidget::onActOpen() {
     //QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.264 *.avi *.mov *.flv *.mkv *.ts *.mp3)");
     QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.*)");
     std::cout << "in MyWidget::onActOpen() :" << filePath.toStdString() <<std::endl;
-    
+
+    this->ledit_input->setText(filePath);
 }
 
 void MyWidget::toggleStatusBar() {
@@ -142,23 +154,51 @@ void MyWidget::onBtnOpen() {
     QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.*)");
     this->ledit_input->setText(filePath);
     this->reader->setFilePath(filePath);
-    if (!this->reader->isRunning()) {
-        this->reader->start();
-    }
 }
 void MyWidget::onBtnStartStop() {
     std::cout << "onBtnStartStop." << std::endl;
-    this->btn_start_stop->setText("stop");
-    if (this->reader->isRunning()) {
-        this->reader->stop();
+    if (b_started) {
+        b_started = false;
+        this->btn_start_stop->setText("start");
+        if (this->reader->isRunning()) {
+            this->reader->pause(true);
+        }
+    } else {
+        b_started = true;
+        this->btn_start_stop->setText("stop");
+        if (!this->reader->isRunning()) {
+            this->reader->start();
+        } else {
+            this->reader->pause(false);
+        }
     }
-    this->reader->wait();    //thread join
-    delete this->reader;
 }
 void MyWidget::onSeek(int i) {
     std::cout << "onSeek." <<i<< std::endl;
 
 }
-void MyWidget::gotSigNum(int i) {
-    std::cout << "gotSigNum." <<i<< std::endl;
+void MyWidget::gotSigFrame(QImage img) {
+    mImg = img.scaled(this->lbl_frame->size(), Qt::IgnoreAspectRatio);
+    this->lbl_frame->setPixmap(QPixmap::fromImage(mImg));
+    //this->lbl_frame->resize(mImg.size());
+    this->lbl_frame->show();
 }
+
+//void MyWidget::paintEvent(QPaintEvent *event)
+//{
+//    //QPainter painter(this);
+//    //painter.setBrush(Qt::black);
+//    //painter.drawRect(0, 0, this->width(), this->height());//draw black first
+//    //if (mImg.size().width() <= 0)
+//    //    return;
+//    //QImage img = mImg.scaled(this->size(),Qt::KeepAspectRatio);
+//    //int x = this->width() - img.width();
+//    //int y = this->height() - img.height();
+//    //x /= 2;
+//    //y /= 2;
+//    //painter.drawImage(QPoint(x,y),img);
+//
+//    this->lbl_frame->setPixmap(QPixmap::fromImage(mImg));
+//    this->lbl_frame->resize(mImg.size());
+//    this->lbl_frame->show();
+//}
