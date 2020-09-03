@@ -5,9 +5,11 @@ INCLUDEPATH += .
 INCLUDEPATH += /home/fang/Qt5.12.0/5.12.0/gcc_64/include
 INCLUDEPATH += /home/fang/Qt5.12.0/5.12.0/gcc_64/include/QtCore
 INCLUDEPATH += /usr/local/include/
+INCLUDEPATH += /opt/opencv/include
 
 LIBS += -L/home/fang/Qt5.12.0/5.12.0/gcc_64/lib -lQt5Core
 LIBS += -L/usr/local/lib -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale -lz -lm
+LIBS += -L/opt/opencv/lib -lopencv_world
 
 CONFIG += c++11
 #QMAKE_CXXFLAGS += -std=c++11

@@ -10,9 +10,17 @@ player, 录屏，直播，转码
 ffmpeg，gstreamer,
 opencv openAL, x264 faac librtmp
 
+av采集: v4l2 + alsa, ffmpeg, opencv openAL
+av编码: x264 faac ffmpeg
+av混合: ffmpeg librtmp
+
 
 目前:
 0.myWidget 作为主界面, readerThread 是读取线程, myUtil 作为各种工具类的集合
 1.myUtil 中的 YuvFileReader 是一个yuv文件的读取类,只支持 yuv420p 格式的文件
 2.现在的功能是打开一个yuv文件，将其在qt中播放，内部调用了 ffmpeg的 sws将yuv转换为rgb32，因为 QImage不支持yuv
+
+
+
+http://blog.yundiantech.com/?log=blog&page=2
 

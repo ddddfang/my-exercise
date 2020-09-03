@@ -153,7 +153,6 @@ void MyWidget::onBtnOpen() {
     std::cout << "onBtnOpen." << std::endl;
     QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.*)");
     this->ledit_input->setText(filePath);
-    this->reader->setFilePath(filePath);
 }
 void MyWidget::onBtnStartStop() {
     std::cout << "onBtnStartStop." << std::endl;
@@ -165,6 +164,10 @@ void MyWidget::onBtnStartStop() {
         }
     } else {
         b_started = true;
+        QString path = this->ledit_input->text();
+        if (!path.isEmpty()) {
+            this->reader->setFilePath(path);
+        }
         this->btn_start_stop->setText("stop");
         if (!this->reader->isRunning()) {
             this->reader->start();

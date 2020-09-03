@@ -6,6 +6,7 @@
 //#include <QPushButton>
 #include "myWidget.h"
 
+//#include <opencv2/opencv.hpp>
 
 int main(int argc, char *argv[])
 {
@@ -18,6 +19,10 @@ int main(int argc, char *argv[])
     window.setWindowTitle("simple sample");
     window.setWindowIcon(QIcon("icon.png"));    //app启动后左侧dock栏会显示这个图标
     window.show();
+
+    ////这样这里会显示两个窗口,一个我们的主窗口,一个cv的窗口
+    //cv::Mat image = cv::imread("/home/fang/testvideo/x264.jpg");
+    //cv::imshow("cvOutPut", image);  //使用qt的显示框架显示这个图片(使用qt/gtk要看cmake指定的是什么)
 
     return app.exec();
 }

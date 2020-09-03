@@ -32,12 +32,18 @@ void readerThread::setFilePath(QString path) {
     if (!file.exists()) {    //
         std::cout << "file not exist : " << mFilePath.toStdString() << std::endl;
     }
+    std::cout << "path set : " << mFilePath.toStdString() << std::endl;
 }
 
 void readerThread::run() {
     std::cout << "readerThread run: threadid = " << QThread::currentThreadId() << std::endl;
-    YuvFileReader yuv_reader(mFilePath);
-    yuv_reader.setWidthHeight(640, 360);
+    int fps = 25;
+
+    //YuvFileReader yuv_reader(mFilePath);
+    //yuv_reader.setWidthHeight(640, 360);
+
+    OpencvReader cv_reader(mFilePath);
+    fps = 30;
 
     while (true) {
         mMutex.lock();
@@ -52,14 +58,18 @@ void readerThread::run() {
         mMutex.unlock();
 
         //std::cout << "readerThread runing: threadid = " << QThread::currentThreadId() << std::endl;
-        QImage img = yuv_reader.readFrame();
+
+
+        //QImage img = yuv_reader.readFrame();
+        QImage img = cv_reader.readFrame();
+
+
         if (img.size().width() <= 0) {
             std::cout << "reach the file end." << std::endl;
             break;
         }
         emit sigGotFrame(img);
-
-        QThread::msleep(40);
+        QThread::msleep(1000/fps);
     }
     std::cout << "readerThread exit: threadid = " << QThread::currentThreadId() << std::endl;
     return;
