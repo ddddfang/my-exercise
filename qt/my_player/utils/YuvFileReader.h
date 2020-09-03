@@ -15,9 +15,6 @@ extern "C"
 #include <libavutil/imgutils.h>
 }
 
-#include <opencv2/opencv.hpp>
-
-
 class YuvFileReader {
 
 public:
@@ -36,25 +33,6 @@ private:
     AVFrame *frame_yuv;
     AVFrame *frame_rgb;
     uint8_t *rgb32_buffer;
-};
-
-
-
-class OpencvReader {
-
-public:
-    OpencvReader(QString path);
-    ~OpencvReader();
-    QImage readFrame();
-
-private:
-    cv::VideoCapture videoCap;
-    cv::Mat mImage;
-
-    QString mPath;
-    int mWidth;
-    int mHeight;
-    int mFps;
 };
 
 

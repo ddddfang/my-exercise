@@ -78,9 +78,9 @@ MyWidget::~MyWidget() {
 }
 
 void MyWidget::initToolBar() {
-    QPixmap pix_new("new.png");
-    QPixmap pix_open("open.png");
-    QPixmap pix_quit("quit.png");
+    QPixmap pix_new("./res/new.png");
+    QPixmap pix_open("./res/open.png");
+    QPixmap pix_quit("./res/quit.png");
 
     this->toolbar = addToolBar("main toolbar");
     this->act_new = this->toolbar->addAction(QIcon(pix_new), "New File");

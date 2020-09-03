@@ -4,7 +4,8 @@
 #include <QMutex>
 #include <QImage>
 
-#include "myUtil.h"
+#include "utils/YuvFileReader.h"
+#include "utils/OpencvReader.h"
 
 class readerThread : public QThread {
 

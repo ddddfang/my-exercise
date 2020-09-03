@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     window.resize(800, 400);
     window.move(300, 300);
     window.setWindowTitle("simple sample");
-    window.setWindowIcon(QIcon("icon.png"));    //app启动后左侧dock栏会显示这个图标
+    window.setWindowIcon(QIcon("./res/icon.png"));    //app启动后左侧dock栏会显示这个图标
     window.show();
 
     ////这样这里会显示两个窗口,一个我们的主窗口,一个cv的窗口
