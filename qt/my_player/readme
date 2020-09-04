@@ -10,9 +10,11 @@ player, 录屏，直播，转码
 ffmpeg，gstreamer,
 opencv openAL, x264 faac librtmp
 
-av采集: v4l2 + alsa, ffmpeg, opencv openAL
+av采集: v4l2 + alsa, ffmpeg, opencv openAL , 
+        qt 自带了平台无关的采集audio的库 https://blog.csdn.net/hanzhen7541/article/details/98794555
 av编码: x264 faac ffmpeg
-av混合: ffmpeg librtmp
+av混合: ffmpeg librtmp ,
+        ffmpeg中 doc/examples/muxing.c 是一个音视频混流的例子
 
 
 目前:
@@ -24,3 +26,8 @@ av混合: ffmpeg librtmp
 
 http://blog.yundiantech.com/?log=blog&page=2
 
+音视频 很系统的系列文章 houxiaoni01
+https://blog.csdn.net/houxiaoni01/category_7639510.html
+
+HBStream 直播技术
+https://www.cnblogs.com/haibindev/p/3434922.html
