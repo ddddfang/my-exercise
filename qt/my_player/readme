@@ -12,7 +12,13 @@ opencv openAL, x264 faac librtmp
 
 av采集: v4l2 + alsa, ffmpeg, opencv openAL , 
         qt 自带了平台无关的采集audio的库 https://blog.csdn.net/hanzhen7541/article/details/98794555
+        ffmpeg-demo/08.v4l2_capture 是一个利用 v4l2 采集video并调用ffmpeg 接口 使用x264 编码的 demo
+        ffmpeg也提供采集摄像头,和麦克风数据的接口. https://www.cnblogs.com/lidabo/p/8662955.html
+        总的来说 v4l2+alsa 最底层, ffmpeg次之, opencv 调用ffmpeg/gstreamer 层次最高
+
 av编码: x264 faac ffmpeg
+        ffmpeg-demo/03.encode_video 有一个通过ffmpeg接口 将yuv420 编码得到 codec(ffmepg支持的任意编码器) 格式的例子
+
 av混合: ffmpeg librtmp ,
         ffmpeg中 doc/examples/muxing.c 是一个音视频混流的例子
 

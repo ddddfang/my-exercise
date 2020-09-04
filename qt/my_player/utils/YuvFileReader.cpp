@@ -6,6 +6,15 @@
 #include <iostream>
 
 
+/* 使用
+func()
+    YuvFileReader yuv_reader(mFilePath);
+    yuv_reader.setWidthHeight(640, 360);
+    while()
+        QImage img = yuv_reader.readFrame();
+*/
+
+
 YuvFileReader::YuvFileReader(QString path)
     : mPath(path), mWidth(0), mHeight(0) {
 

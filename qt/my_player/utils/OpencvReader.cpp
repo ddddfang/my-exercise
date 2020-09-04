@@ -2,6 +2,12 @@
 
 #include <iostream>
 
+/* 使用
+func()
+    OpencvReader cv_reader(mFilePath);
+    while()
+        QImage img = cv_reader.readFrame();
+*/
 
 OpencvReader::OpencvReader(QString path) {
     this->mPath = path;

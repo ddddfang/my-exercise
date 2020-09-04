@@ -1,0 +1,7 @@
+
+YuvFileReader:
+    从yuv文件读取原始video数据,并利用ffmpeg将yuv420p转换为rgb32最后封装成 QImage
+
+OpencvReader:
+    调用opencv的 VideoCapture 接口采集摄像头数据(也可以从flv等文件获取video数据)
+    并将得到的 BGR数据通过 cvtColor 转换为 RGB,最后封装成 QImage
