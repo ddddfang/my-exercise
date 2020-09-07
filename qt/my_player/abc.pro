@@ -19,10 +19,10 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 # Input
 HEADERS += myWidget.h readerThread.h
-HEADERS += utils/YuvFileReader.h utils/OpencvReader.h
+HEADERS += utils/YuvFileReader.h utils/OpencvReader.h utils/ffCameraReader.h
 
 SOURCES += abc.cpp myWidget.cpp readerThread.cpp
-SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp
+SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp utils/ffCameraReader.cpp
 
 
 QT += widgets core

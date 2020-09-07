@@ -42,8 +42,10 @@ void readerThread::run() {
     //YuvFileReader yuv_reader(mFilePath);
     //yuv_reader.setWidthHeight(640, 360);
 
-    OpencvReader cv_reader(mFilePath);
-    fps = 30;
+    //OpencvReader cv_reader(mFilePath);
+    //fps = 30;
+
+    ffCameraReader ff_reader(mFilePath);
 
     while (true) {
         mMutex.lock();
@@ -61,14 +63,15 @@ void readerThread::run() {
 
 
         //QImage img = yuv_reader.readFrame();
-        QImage img = cv_reader.readFrame();
+        //QImage img = cv_reader.readFrame();
+        QImage img = ff_reader.readFrame();
 
 
-        if (img.size().width() <= 0) {
-            std::cout << "reach the file end." << std::endl;
-            break;
-        }
-        emit sigGotFrame(img);
+        //if (img.size().width() <= 0) {
+        //    std::cout << "reach the file end." << std::endl;
+        //    break;
+        //}
+        //emit sigGotFrame(img);
         QThread::msleep(1000/fps);
     }
     std::cout << "readerThread exit: threadid = " << QThread::currentThreadId() << std::endl;

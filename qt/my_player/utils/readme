@@ -5,3 +5,7 @@ YuvFileReader:
 OpencvReader:
     调用opencv的 VideoCapture 接口采集摄像头数据(也可以从flv等文件获取video数据)
     并将得到的 BGR数据通过 cvtColor 转换为 RGB,最后封装成 QImage
+
+ffCameraReader:
+    调用 ffmpeg api 采集 camera video. ffmpeg 进一步调用 v4l2
+    根据 my-demos/ffmpeg-demo/08.ffmpeg_capture 而来

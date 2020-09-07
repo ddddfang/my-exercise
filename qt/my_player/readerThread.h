@@ -6,6 +6,7 @@
 
 #include "utils/YuvFileReader.h"
 #include "utils/OpencvReader.h"
+#include "utils/ffCameraReader.h"
 
 class readerThread : public QThread {
 
