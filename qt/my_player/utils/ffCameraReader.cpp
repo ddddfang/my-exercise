@@ -2,18 +2,6 @@
 #include "ffCameraReader.h"
 #include <iostream>
 
-static void pgm_save(unsigned char *buf, int wrap, int xsize, int ysize,
-                     char *filename)
-{
-    FILE *f;
-    int i;
-
-    f = fopen(filename,"w");
-    fprintf(f, "P5\n%d %d\n%d\n", xsize, ysize, 255);
-    for (i = 0; i < ysize; i++)
-        fwrite(buf + i * wrap, 1, xsize, f);
-    fclose(f);
-}
 
 ffCameraReader::ffCameraReader(QString path) {
     //"/dev/video0"
@@ -21,13 +9,13 @@ ffCameraReader::ffCameraReader(QString path) {
     int ret = 0;
     this->mDeviceName = path;   // "/dev/video0"
 
-    avformat_network_init();    //?
+    avformat_network_init();    //? 似乎不需要
     avdevice_register_all();    //Register Device
 
     this->pFormatCtx = avformat_alloc_context();
-    this->pkt = av_packet_alloc();;
+    this->pkt = av_packet_alloc();
 
-    /* 打开format并获取其中的stream信息 */
+    /* 1.打开format并获取其中的stream信息 */
     AVInputFormat *ifmt = av_find_input_format("video4linux2");
     if (avformat_open_input(&(this->pFormatCtx), this->mDeviceName.toStdString().c_str(), ifmt, NULL) != 0) {
         std::cout << "Couldn't open input stream." << std::endl;
@@ -36,8 +24,11 @@ ffCameraReader::ffCameraReader(QString path) {
     if (avformat_find_stream_info(this->pFormatCtx, NULL) < 0) {
         std::cout << "Couldn't find stream information." << std::endl;
     }
+
+    /* 2.完成后做一个打印 */
     av_dump_format(this->pFormatCtx, 0, this->mDeviceName.toStdString().c_str(), 0);
 
+    /* 3.查找video流 */
     this->videoIndex = -1;
     for (int i = 0; i < this->pFormatCtx->nb_streams; i++) {
         if (this->pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
@@ -49,7 +40,7 @@ ffCameraReader::ffCameraReader(QString path) {
         std::cout << "Couldn't find a video stream." << std::endl;
     }
 
-    /* 拿到video流中的 codec ctx 信息 */
+    /* 4.拿到video流中的 codec ctx 信息 */
     AVCodec *pCodec = avcodec_find_decoder(this->pFormatCtx->streams[this->videoIndex]->codecpar->codec_id);
     if (!pCodec) {
         std::cout << "Codec not found." << std::endl;
@@ -68,17 +59,17 @@ ffCameraReader::ffCameraReader(QString path) {
     }
 
     this->pFrame = av_frame_alloc();     //原始 frame, 鬼知道什么格式
-    this->pFrameYUV = av_frame_alloc();  //统一转换为 yuv420p
-    this->pFrameYUV->format = AV_PIX_FMT_YUV420P;
-    this->pFrameYUV->width = this->pCodecCtx->width;
-    this->pFrameYUV->height = this->pCodecCtx->height;
-    ret = av_frame_get_buffer(this->pFrameYUV, 32);   //32字节对齐. ffmpeg/doc/examples/muxing.c 里面就是这样分配的
+    this->pFrame4QImage = av_frame_alloc();  //统一转换为 yuv420p
+    this->pFrame4QImage->format = AV_PIX_FMT_RGB24;//AV_PIX_FMT_YUV420P; QImage 只支持rgb格式
+    this->pFrame4QImage->width = this->pCodecCtx->width;
+    this->pFrame4QImage->height = this->pCodecCtx->height;
+    ret = av_frame_get_buffer(this->pFrame4QImage, 32);   //32字节对齐. ffmpeg/doc/examples/muxing.c 里面就是这样分配的
     if (ret < 0) {
-        fprintf(stderr, "error when av_frame_get_buffer for YUV\n");
+        fprintf(stderr, "error when av_frame_get_buffer for pFrame\n");
     }
 
     this->img_convert_ctx = sws_getContext( this->pCodecCtx->width, this->pCodecCtx->height, this->pCodecCtx->pix_fmt,
-                                            this->pCodecCtx->width, this->pCodecCtx->height, (AVPixelFormat)this->pFrameYUV->format,
+                                            this->pCodecCtx->width, this->pCodecCtx->height, (AVPixelFormat)this->pFrame4QImage->format,
                                             SWS_BICUBIC, NULL, NULL, NULL); 
 }
 
@@ -87,8 +78,8 @@ ffCameraReader::~ffCameraReader() {
     if (this->img_convert_ctx) {
         sws_freeContext(this->img_convert_ctx);
     }
-    if (this->pFrameYUV) {
-        av_frame_free(&this->pFrameYUV);
+    if (this->pFrame4QImage) {
+        av_frame_free(&this->pFrame4QImage);
     }
     if (this->pFrame) {
         av_frame_free(&this->pFrame);
@@ -107,7 +98,6 @@ ffCameraReader::~ffCameraReader() {
 
 QImage ffCameraReader::readFrame() {
     int ret = 0;
-    char filename_buf[1024];
     if (av_read_frame(this->pFormatCtx, this->pkt) >= 0) {
         if (this->pkt->stream_index == this->videoIndex) {
 
@@ -128,24 +118,29 @@ QImage ffCameraReader::readFrame() {
                 }
                 sws_scale(  this->img_convert_ctx, (uint8_t const* const*)this->pFrame->data, this->pFrame->linesize,
                             0, pCodecCtx->height,
-                            this->pFrameYUV->data, this->pFrameYUV->linesize);
+                            this->pFrame4QImage->data, this->pFrame4QImage->linesize);
 
-                snprintf(filename_buf, sizeof(filename_buf), "%s-%d", "decoded", this->pCodecCtx->frame_number);
-                pgm_save(pFrameYUV->data[0], pFrameYUV->linesize[0], pFrameYUV->width, pFrameYUV->height, filename_buf);
+                //下面这两种方式都可用,参考 https://www.thinbug.com/q/13088749
+                //QImage img(pFrame4QImage->width, pFrame4QImage->height, QImage::Format_RGB888);
+                //for(int y = 0; y < pFrame4QImage->height; y++) {
+                //    memcpy(img.scanLine(y), this->pFrame4QImage->data[0] + y * this->pFrame4QImage->linesize[0], this->pFrame4QImage->width * 3);
+                //}
+                //return img.copy();
+
+                QImage img(this->pFrame4QImage->width, this->pFrame4QImage->height, QImage::Format_RGB32);
+                uint8_t *src = (uint8_t *)(this->pFrame4QImage->data[0]);
+                for (int y = 0; y < pFrame4QImage->height; y++) {
+                    QRgb *scanLine = (QRgb *) img.scanLine(y);
+                    for (int x = 0; x < pFrame4QImage->width; x++) {
+                        scanLine[x] = qRgb(src[3*x], src[3*x+1], src[3*x+2]);
+                    }
+                    src += pFrame4QImage->linesize[0];  //看起来 linesize[0] 是图像宽度,的3倍啊
+                }
+                return img.copy();
             }
         }
     }
     return QImage();
-
-    //QImage *myImage = new QImage(pFrameYUV->width, pFrameYUV->height, QImage::Format_RGB32);
-    //uint8_t *src = (uint8_t *)(pFrameYUV->data[0]);
-    //for (int y = 0; y < pFrameYUV->height; y++) {
-    //    QRgb *scanLine = (QRgb *) myImage->scanLine(y);
-    //    for (int x = 0; x < pFrameYUV->width; x++) {
-    //        scanLine[x] = qRgb(src[3*x], src[3*x+1], src[3*x+2]);
-    //    }
-    //    src += pFrameRGB->linesize[0];
-    //}
 }
 
 

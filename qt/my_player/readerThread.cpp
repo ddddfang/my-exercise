@@ -67,11 +67,11 @@ void readerThread::run() {
         QImage img = ff_reader.readFrame();
 
 
-        //if (img.size().width() <= 0) {
-        //    std::cout << "reach the file end." << std::endl;
-        //    break;
-        //}
-        //emit sigGotFrame(img);
+        if (img.size().width() <= 0) {
+            std::cout << "reach the file end." << std::endl;
+            break;
+        }
+        emit sigGotFrame(img);
         QThread::msleep(1000/fps);
     }
     std::cout << "readerThread exit: threadid = " << QThread::currentThreadId() << std::endl;

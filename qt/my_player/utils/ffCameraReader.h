@@ -43,7 +43,7 @@ private:
     AVCodecContext *pCodecCtx;
     int videoIndex;
     AVFrame *pFrame;
-    AVFrame *pFrameYUV;
+    AVFrame *pFrame4QImage;
     struct SwsContext *img_convert_ctx;
 
     //int mWidth;
