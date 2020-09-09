@@ -84,8 +84,8 @@ QImage YuvFileReader::readFrame() {
     }
     frame_yuv->pts = -1;
 
-    int luma_size = mWidth * mHeight;   //等于 frame_yuv->linesize[0] * frame_yuv->linesize[1]
-    int chroma_size = luma_size / 4;    //等于 frame_yuv->linesize[0] * frame_yuv->linesize[1] / 4
+    int luma_size = mWidth * mHeight;   //mWidth=640, mHeight=360, frame_yuv->linesize[0]=640,frame_yuv->linesize[1]=320
+    int chroma_size = luma_size / 4;
     //std::cout << "("<<frame_yuv->linesize[0]<<","<<frame_yuv->linesize[1]<<","<<frame_yuv->linesize[2]<<").luma_size " <<luma_size<<" chroma_size "<<chroma_size<< std::endl;
     if( fread( frame_yuv->data[0], 1, luma_size, this->mfr) != (unsigned)luma_size ) {
         std::cout << "error when fread." << std::endl;
