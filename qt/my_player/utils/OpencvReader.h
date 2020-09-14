@@ -6,12 +6,18 @@
 #include <opencv2/opencv.hpp>
 
 
-class OpencvReader {
+class OpencvReader : public QObject {
+
+    Q_OBJECT
+
+signals:
+    void sigGotFrame(QImage);
 
 public:
     OpencvReader(QString path);
     ~OpencvReader();
-    QImage readFrame();
+    int readFrames();
+    int getFps();
 
 private:
     cv::VideoCapture videoCap;
@@ -21,6 +27,7 @@ private:
     int mWidth;
     int mHeight;
     int mFps;
+    int dev_index;
 };
 
 

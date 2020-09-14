@@ -69,7 +69,7 @@ void YuvFileReader::setWidthHeight(int width, int height) {
     }
 }
 
-QImage YuvFileReader::readFrame() {
+int YuvFileReader::readFrames() {
     int ret = 0;
     frame_yuv->format = AV_PIX_FMT_YUV420P;
     frame_yuv->width = mWidth;
@@ -77,10 +77,12 @@ QImage YuvFileReader::readFrame() {
     ret = av_frame_get_buffer(frame_yuv, 32);   //32字节对齐, data[] linesize[] validate!
     if (ret < 0) {
         std::cout << "error when av_frame_get_buffer." << std::endl;
+        return -1;
     }
     ret = av_frame_make_writable(frame_yuv);
     if (ret < 0) {
         std::cout << "error when av_frame_make_writable." << std::endl;
+        return -1;
     }
     frame_yuv->pts = -1;
 
@@ -89,15 +91,15 @@ QImage YuvFileReader::readFrame() {
     //std::cout << "("<<frame_yuv->linesize[0]<<","<<frame_yuv->linesize[1]<<","<<frame_yuv->linesize[2]<<").luma_size " <<luma_size<<" chroma_size "<<chroma_size<< std::endl;
     if( fread( frame_yuv->data[0], 1, luma_size, this->mfr) != (unsigned)luma_size ) {
         std::cout << "error when fread." << std::endl;
-        return QImage();
+        return -1;
     }
     if( fread( frame_yuv->data[1], 1, chroma_size, this->mfr) != (unsigned)chroma_size ) {
         std::cout << "error when fread." << std::endl;
-        return QImage();
+        return -1;
     }
     if( fread( frame_yuv->data[2], 1, chroma_size, this->mfr) != (unsigned)chroma_size ) {
         std::cout << "error when fread." << std::endl;
-        return QImage();
+        return -1;
     }
     
     // Convert the image from its native format to RGB
@@ -106,8 +108,13 @@ QImage YuvFileReader::readFrame() {
                 0, mHeight,
                 frame_rgb->data, frame_rgb->linesize);
     //send the image to main thread
-    QImage tmpImg((uchar *)rgb32_buffer, mWidth, mHeight, QImage::Format_RGB32);
-    QImage image = tmpImg.copy();
-    return image;
+    QImage img((uchar *)rgb32_buffer, mWidth, mHeight, QImage::Format_RGB32);
+    emit sigGotFrame(img.copy());
+    return 0;
+}
+
+int YuvFileReader::getFps() {
+    int t = 25;  //40ms
+    return t;
 }
 

@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
     MyWidget window;    //使用自己定制的 QWidget,所以这样定制的 QWidget 可以被放到单独的模块里
 
-    window.resize(800, 400);
+    window.resize(800, 600);
     window.move(300, 300);
     window.setWindowTitle("simple sample");
     window.setWindowIcon(QIcon("./res/icon.png"));    //app启动后左侧dock栏会显示这个图标

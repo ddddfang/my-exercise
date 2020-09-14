@@ -13,14 +13,14 @@ OpencvReader::OpencvReader(QString path) {
     this->mPath = path;
     std::cout << "construct OpencvReader, file=" << mPath.toStdString() << std::endl;
 
-    int dev_index = -1;
+    this->dev_index = -1;
     if (path == "/dev/video0") {
-        dev_index = 0;
+        this->dev_index = 0;
     } else if (path == "/dev/video1") {
-        dev_index = 1;
+        this->dev_index = 1;
     }
 
-    if (dev_index != -1) {  //open device
+    if (this->dev_index != -1) {  //open device
         if (!this->videoCap.open(dev_index)) {
             std::cout << "error when open device " << dev_index << std::endl;
         }
@@ -49,7 +49,7 @@ OpencvReader::~OpencvReader() {
     }
 }
 
-QImage OpencvReader::readFrame() {
+int OpencvReader::readFrames() {
     //this->videoCap >> this->mImage;    //二者等价
     //cv::Mat targetImg;
     //if (this->videoCap.read(targetImg)) {
@@ -66,10 +66,21 @@ QImage OpencvReader::readFrame() {
     if (this->videoCap.read(this->mImage)) {
         if (this->mImage.data) {
             cv::cvtColor(this->mImage, this->mImage, CV_BGR2RGB);   //opencv generate bgr, qt support RGB
-            QImage tmpImg = QImage((uint8_t *)this->mImage.data, this->mImage.cols, this->mImage.rows, QImage::Format_RGB888);
-            QImage ret = tmpImg.copy();
-            return ret;
+            QImage img = QImage((uint8_t *)this->mImage.data, this->mImage.cols, this->mImage.rows, QImage::Format_RGB888);
+            emit sigGotFrame(img.copy());
+            return 0;
         }
     }
-    return QImage();
+    return -1;
 }
+
+int OpencvReader::getFps() {
+    int t = 0;
+    if (this->dev_index != -1) {
+        t = 30;
+    } else {
+        t = 25; //40ms
+    }
+    return t;
+}
+

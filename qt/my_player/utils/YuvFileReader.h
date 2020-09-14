@@ -15,13 +15,19 @@ extern "C"
 #include <libavutil/imgutils.h>
 }
 
-class YuvFileReader {
+class YuvFileReader : public QObject {
+
+    Q_OBJECT
+
+signals:
+    void sigGotFrame(QImage);
 
 public:
     YuvFileReader(QString path);
     ~YuvFileReader();
     void setWidthHeight(int width, int height);
-    QImage readFrame();
+    int readFrames();
+    int getFps();
 
 private:
     QString mPath;

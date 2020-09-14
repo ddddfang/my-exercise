@@ -59,8 +59,8 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(cw);
 
     //start reader thread
-    reader = new readerThread();
-    connect(reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
+    video_thread = new videoThread();
+    connect(video_thread, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
     b_started = false;
     //-----------------------------------------------------------------------
 
@@ -68,12 +68,12 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
 }
 
 MyWidget::~MyWidget() {
-    if (this->reader) {
-        if (this->reader->isRunning()) {
-            this->reader->stop();
-            this->reader->wait();    //thread join
+    if (this->video_thread) {
+        if (this->video_thread->isRunning()) {
+            this->video_thread->stop();
+            this->video_thread->wait();    //thread join
         }
-        delete this->reader;
+        delete this->video_thread;
     }
 }
 
@@ -159,20 +159,20 @@ void MyWidget::onBtnStartStop() {
     if (b_started) {
         b_started = false;
         this->btn_start_stop->setText("start");
-        if (this->reader->isRunning()) {
-            this->reader->pause(true);
+        if (this->video_thread->isRunning()) {
+            this->video_thread->pause(true);
         }
     } else {
         b_started = true;
         QString path = this->ledit_input->text();
         if (!path.isEmpty()) {
-            this->reader->setFilePath(path);
+            this->video_thread->setFilePath(path);
         }
         this->btn_start_stop->setText("stop");
-        if (!this->reader->isRunning()) {
-            this->reader->start();
+        if (!this->video_thread->isRunning()) {
+            this->video_thread->start();
         } else {
-            this->reader->pause(false);
+            this->video_thread->pause(false);
         }
     }
 }

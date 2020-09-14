@@ -18,6 +18,7 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavfilter/avfilter.h>
 #include <libswscale/swscale.h>
+#include <libswresample/swresample.h>
 
 #include <libavutil/pixfmt.h>
 #include <libavutil/imgutils.h>
@@ -26,35 +27,37 @@ extern "C"
 }
 #endif
 
+
+#define MAX_AUDIO_FRAME_SIZE    192000
+typedef struct AFrame {
+    uint8_t data[MAX_AUDIO_FRAME_SIZE];
+    int len;
+} AFrame;
+
+
 //ffmpeg -devices 列出所有可用的 devices
 
-class ffCameraReader : public QObject {
+class ffMicroReader : public QObject {
 
     Q_OBJECT
-
 signals:
-    void sigGotFrame(QImage);
+    void sigGotFrame(AFrame);
 
 public:
-    ffCameraReader(QString path);
-    ~ffCameraReader();
-    int readFrames();
-    int getFps();
+    ffMicroReader(QString path);
+    ~ffMicroReader();
+    void readFrames();  //调用一次则 call 一下 av_read_frame(),至于得到多少帧,通过 callback 通知
 
 private:
     QString mDeviceName;
-
-    AVFormatContext *pFormatCtx;
+    int audioindex;
     AVPacket *pkt;
+    AVFormatContext *pFormatCtx;
     AVCodecContext *pCodecCtx;
-    int videoIndex;
     AVFrame *pFrame;
-    AVFrame *pFrame4QImage;
-    struct SwsContext *img_convert_ctx;
-
-    //int mWidth;
-    //int mHeight;
-    //int mFps;
+#if OUTPUT_PCM
+    FILE *pFile;
+#endif
 };
 
 

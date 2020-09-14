@@ -18,11 +18,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 # Input
-HEADERS += myWidget.h readerThread.h
-HEADERS += utils/YuvFileReader.h utils/OpencvReader.h utils/ffCameraReader.h
+HEADERS += myWidget.h videoThread.h
+HEADERS += utils/YuvFileReader.h utils/OpencvReader.h utils/ffCameraReader.h utils/ffMicroReader.h
 
-SOURCES += abc.cpp myWidget.cpp readerThread.cpp
-SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp utils/ffCameraReader.cpp
+SOURCES += abc.cpp myWidget.cpp videoThread.cpp
+SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp utils/ffCameraReader.cpp utils/ffMicroReader.cpp
 
 
 QT += widgets core

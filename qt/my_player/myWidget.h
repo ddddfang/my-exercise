@@ -30,7 +30,7 @@
 #include <QSplitter>
 #include <QPainter>
 
-#include "readerThread.h"
+#include "videoThread.h"
 
 //class MyWidget : public QWidget {
 class MyWidget : public QMainWindow {   //主窗口我们选择从 QMainWindow 继承,这样可以有菜单栏 QMainWindow::menuBar() 可用
@@ -75,7 +75,7 @@ private:
     QSlider *slider_progress;
     QLabel *lbl_progress;
 
-    readerThread *reader;
+    videoThread *video_thread;
     bool b_started;
     QImage mImg;
 

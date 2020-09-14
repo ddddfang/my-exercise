@@ -96,7 +96,7 @@ ffCameraReader::~ffCameraReader() {
     }
 }
 
-QImage ffCameraReader::readFrame() {
+int ffCameraReader::readFrames() {
     int ret = 0;
     if (av_read_frame(this->pFormatCtx, this->pkt) >= 0) {
         if (this->pkt->stream_index == this->videoIndex) {
@@ -104,16 +104,16 @@ QImage ffCameraReader::readFrame() {
             //最新的decode方法
             ret = avcodec_send_packet(this->pCodecCtx, this->pkt);
             if (ret < 0) {
-                fprintf(stderr, "Error sending a packet for decoding\n");
-                return QImage();
+                std::cout << "Error sending a packet for decoding." << std::endl;
+                return -1;
             }
 
             while (ret >= 0) {
                 ret = avcodec_receive_frame(this->pCodecCtx, this->pFrame);
-                if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+                if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
                     break;
-                else if (ret < 0) {
-                    fprintf(stderr, "Error during decoding\n");
+                } else if (ret < 0) {
+                    std::cout << "Error during decoding." << std::endl;
                     break;
                 }
                 sws_scale(  this->img_convert_ctx, (uint8_t const* const*)this->pFrame->data, this->pFrame->linesize,
@@ -125,7 +125,7 @@ QImage ffCameraReader::readFrame() {
                 //for(int y = 0; y < pFrame4QImage->height; y++) {
                 //    memcpy(img.scanLine(y), this->pFrame4QImage->data[0] + y * this->pFrame4QImage->linesize[0], this->pFrame4QImage->width * 3);
                 //}
-                //return img.copy();
+                //emit sigGotFrame(img.copy());
 
                 QImage img(this->pFrame4QImage->width, this->pFrame4QImage->height, QImage::Format_RGB32);
                 uint8_t *src = (uint8_t *)(this->pFrame4QImage->data[0]);
@@ -136,11 +136,15 @@ QImage ffCameraReader::readFrame() {
                     }
                     src += pFrame4QImage->linesize[0];  //看起来 linesize[0] 是图像宽度,的3倍啊
                 }
-                return img.copy();
+                emit sigGotFrame(img.copy());
             }
         }
     }
-    return QImage();
+    return 0;
 }
 
+int ffCameraReader::getFps() {
+    int t = 25;  //40ms
+    return t;
+}
 
