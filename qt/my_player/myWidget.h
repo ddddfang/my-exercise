@@ -76,7 +76,6 @@ private:
     QLabel *lbl_progress;
 
     videoThread *video_thread;
-    bool b_started;
     QImage mImg;
 
 protected:

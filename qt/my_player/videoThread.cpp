@@ -12,18 +12,26 @@ videoThread::~videoThread() {
     std::cout << "videoThread decstructed: threadid = " << QThread::currentThreadId() << std::endl;
 }
 
-void videoThread::stop() {
+void videoThread::myStop() {
     std::cout <<"videoThread::stop call. id=" << currentThreadId() << std::endl;
     mMutex.lock();
     mStop = true;
     mMutex.unlock();
 }
 
-void videoThread::pause(bool bpause) {
+void videoThread::myPause(bool bpause) {
     std::cout <<"videoThread::pause call. id=" << currentThreadId() << std::endl;
     mMutex.lock();
     mPause = bpause;
     mMutex.unlock();
+}
+
+bool videoThread::isPaused() {
+    bool result = false;
+    mMutex.lock();
+    result = mPause;
+    mMutex.unlock();
+    return result;
 }
 
 void videoThread::setFilePath(QString path) {
@@ -44,13 +52,13 @@ void videoThread::run() {
     //yuv_reader.setWidthHeight(640, 360);
     //fps = yuv_reader.getFps();
 
-    OpencvReader cv_reader(mFilePath);
-    connect(&cv_reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(onGotFrame(QImage)));
-    fps = cv_reader.getFps();
+    //OpencvReader cv_reader(mFilePath);
+    //connect(&cv_reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(onGotFrame(QImage)));
+    //fps = cv_reader.getFps();
 
-    //ffCameraReader ff_reader(mFilePath);
-    //connect(&ff_reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(onGotFrame(QImage)));
-    //fps = ff_reader.getFps();
+    ffCameraReader ff_reader(mFilePath);
+    connect(&ff_reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(onGotFrame(QImage)));
+    fps = ff_reader.getFps();
 
     while (true) {
         mMutex.lock();
@@ -67,18 +75,19 @@ void videoThread::run() {
         //std::cout << "videoThread runing: threadid = " << QThread::currentThreadId() << std::endl;
 
 
+        //readFrames 将会 emit 信号,由本thread的 onGotFrame 接收
         //if (yuv_reader.readFrames() == -1) {
         //    std::cout << "encounter error or eof." << std::endl;
         //    this->stop();
         //}
-        if (cv_reader.readFrames() == -1) {
-            std::cout << "encounter error or eof." << std::endl;
-            this->stop();
-        }
-        //if (ff_reader.readFrames() == -1) {
+        //if (cv_reader.readFrames() == -1) {
         //    std::cout << "encounter error or eof." << std::endl;
         //    this->stop();
         //}
+        if (ff_reader.readFrames() == -1) {
+            std::cout << "encounter error or eof." << std::endl;
+            this->myStop();
+        }
 
 
         QThread::msleep(1000/fps);
@@ -93,9 +102,10 @@ void videoThread::run() {
 void videoThread::onGotFrame(QImage img) {
     if (img.size().width() <= 0) {
         std::cout << "reach the file end." << std::endl;
-        this->stop();
+        this->myStop();
         return;
     }
-    std::cout << "video thread got a frame, and here emit it" << std::endl;
+    //std::cout << "video thread got a frame, and here emit it" << std::endl;
     emit sigGotFrame(img);
 }
+

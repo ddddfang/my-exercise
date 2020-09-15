@@ -21,8 +21,9 @@ private slots:
 public:
     explicit videoThread();
     ~videoThread();
-    void pause(bool);
-    void stop();
+    void myStop();
+    void myPause(bool);
+    bool isPaused();
     void setFilePath(QString path);
 
 protected:

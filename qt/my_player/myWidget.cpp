@@ -61,7 +61,6 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     //start reader thread
     video_thread = new videoThread();
     connect(video_thread, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
-    b_started = false;
     //-----------------------------------------------------------------------
 
     initStatusBar();
@@ -70,7 +69,7 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
 MyWidget::~MyWidget() {
     if (this->video_thread) {
         if (this->video_thread->isRunning()) {
-            this->video_thread->stop();
+            this->video_thread->myStop();
             this->video_thread->wait();    //thread join
         }
         delete this->video_thread;
@@ -154,26 +153,24 @@ void MyWidget::onBtnOpen() {
     QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.*)");
     this->ledit_input->setText(filePath);
 }
+
 void MyWidget::onBtnStartStop() {
     std::cout << "onBtnStartStop." << std::endl;
-    if (b_started) {
-        b_started = false;
-        this->btn_start_stop->setText("start");
-        if (this->video_thread->isRunning()) {
-            this->video_thread->pause(true);
-        }
-    } else {
-        b_started = true;
-        QString path = this->ledit_input->text();
-        if (!path.isEmpty()) {
-            this->video_thread->setFilePath(path);
-        }
-        this->btn_start_stop->setText("stop");
-        if (!this->video_thread->isRunning()) {
-            this->video_thread->start();
+    QString path = this->ledit_input->text();
+    if (!path.isEmpty()) {
+        this->video_thread->setFilePath(path);
+    }
+    if (this->video_thread->isRunning()) {
+        if (this->video_thread->isPaused()) {   //原来已经启动,但是是被pasued的状态
+            this->video_thread->myPause(false); //现在解除 paused 状态
+            this->btn_start_stop->setText("stop");
         } else {
-            this->video_thread->pause(false);
+            this->video_thread->myPause(true); //现在进入 paused 状态
+            this->btn_start_stop->setText("start");
         }
+    } else {    //原来是没有启动的状态
+        this->video_thread->start();    //那么现在启动它,现在状态是已经启动,可能的操作是 stop
+        this->btn_start_stop->setText("stop");
     }
 }
 void MyWidget::onSeek(int i) {
