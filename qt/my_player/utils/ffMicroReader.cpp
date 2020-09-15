@@ -7,8 +7,9 @@ ffMicroReader::ffMicroReader(QString path) {
     std::cout << "construct ffMicroReader, file=" << path.toStdString() << std::endl;
     int i = 0;
     AVCodec *pCodec = NULL;
-
     this->mDeviceName = "default";
+
+    qRegisterMetaType<AFrame>("AFrame");    //这里注册我们使用的 AFrame 类,不然在 connect() 的时候 qt 不认
 
     avdevice_register_all();    //Register Device
 
@@ -100,14 +101,14 @@ ffMicroReader::~ffMicroReader() {
     }
 }
 
-void ffMicroReader::readFrames() {
+int ffMicroReader::readFrames() {
     if (av_read_frame(this->pFormatCtx, this->pkt) >= 0) {
         if (this->pkt->stream_index == this->audioindex) {
             //最新的decode方法
             int ret = avcodec_send_packet(this->pCodecCtx, this->pkt);
             if (ret < 0) {
                 std::cout << "Error sending a packet for decoding." << std::endl;
-                return;
+                return -1;
             }
 
             while (ret >= 0) {
@@ -127,13 +128,17 @@ void ffMicroReader::readFrames() {
                 AFrame audio_frame;
                 audio_frame.len = this->pFrame->linesize[0];
                 if (audio_frame.len > 0) {
-                    memcpy(audio_frame.data, this->pFrame->data[0], audio_frame.len *sizeof(uint8_t));
+                    memcpy(audio_frame.data, this->pFrame->data[0], audio_frame.len * sizeof(uint8_t));
+                    //printf("%p,len=%d, %x %x %x %x %x %x %x %x\n", audio_frame.data, audio_frame.len, 
+                    //        audio_frame.data[0], audio_frame.data[1], audio_frame.data[2], audio_frame.data[3], 
+                    //        audio_frame.data[4], audio_frame.data[5], audio_frame.data[6], audio_frame.data[7]);
                     emit sigGotFrame(audio_frame);
                 }
                 //the picture is allocated by the decoder. no need to free it
             }
         }
     }
+    return 0;
     //usleep(400);   //400us
 //    //flush decoder
 //    this->pkt->data = NULL;

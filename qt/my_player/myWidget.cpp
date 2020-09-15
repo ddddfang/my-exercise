@@ -60,7 +60,9 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
 
     //start reader thread
     video_thread = new videoThread();
+    audio_thread = new audioThread();
     connect(video_thread, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
+    connect(audio_thread, SIGNAL(sigGotFrame(AFrame)), this, SLOT(gotSigAFrame(AFrame)));
     //-----------------------------------------------------------------------
 
     initStatusBar();
@@ -73,6 +75,13 @@ MyWidget::~MyWidget() {
             this->video_thread->wait();    //thread join
         }
         delete this->video_thread;
+    }
+    if (this->audio_thread) {
+        if (this->audio_thread->isRunning()) {
+            this->audio_thread->myStop();
+            this->audio_thread->wait();    //thread join
+        }
+        delete this->audio_thread;
     }
 }
 
@@ -163,13 +172,16 @@ void MyWidget::onBtnStartStop() {
     if (this->video_thread->isRunning()) {
         if (this->video_thread->isPaused()) {   //原来已经启动,但是是被pasued的状态
             this->video_thread->myPause(false); //现在解除 paused 状态
+            this->audio_thread->myPause(false); //现在解除 paused 状态
             this->btn_start_stop->setText("stop");
         } else {
             this->video_thread->myPause(true); //现在进入 paused 状态
+            this->audio_thread->myPause(true); //现在进入 paused 状态
             this->btn_start_stop->setText("start");
         }
     } else {    //原来是没有启动的状态
         this->video_thread->start();    //那么现在启动它,现在状态是已经启动,可能的操作是 stop
+        this->audio_thread->start();    //那么现在启动它,现在状态是已经启动,可能的操作是 stop
         this->btn_start_stop->setText("stop");
     }
 }
@@ -182,6 +194,14 @@ void MyWidget::gotSigFrame(QImage img) {
     this->lbl_frame->setPixmap(QPixmap::fromImage(mImg));
     //this->lbl_frame->resize(mImg.size());
     this->lbl_frame->show();
+}
+
+void MyWidget::gotSigAFrame(AFrame af) {
+    //qt 播放 pcm audio
+    //https://blog.csdn.net/caoshangpa/article/details/51224678
+    printf("MyWidget::gotSigAFrame %p,len=%d, %x %x %x %x %x %x %x %x\n", af.data, af.len, 
+            af.data[0],af.data[1],af.data[2],af.data[3], 
+            af.data[4],af.data[5],af.data[6],af.data[7]);
 }
 
 //void MyWidget::paintEvent(QPaintEvent *event)

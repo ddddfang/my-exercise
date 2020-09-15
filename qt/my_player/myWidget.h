@@ -31,6 +31,7 @@
 #include <QPainter>
 
 #include "videoThread.h"
+#include "audioThread.h"
 
 //class MyWidget : public QWidget {
 class MyWidget : public QMainWindow {   //主窗口我们选择从 QMainWindow 继承,这样可以有菜单栏 QMainWindow::menuBar() 可用
@@ -52,6 +53,7 @@ private slots:
     void onSeek(int);
 
     void gotSigFrame(QImage);
+    void gotSigAFrame(AFrame);
 
 private:
     void initToolBar();
@@ -76,6 +78,7 @@ private:
     QLabel *lbl_progress;
 
     videoThread *video_thread;
+    audioThread *audio_thread;
     QImage mImg;
 
 protected:

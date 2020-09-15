@@ -46,7 +46,7 @@ signals:
 public:
     ffMicroReader(QString path);
     ~ffMicroReader();
-    void readFrames();  //调用一次则 call 一下 av_read_frame(),至于得到多少帧,通过 callback 通知
+    int readFrames();  //调用一次则 call 一下 av_read_frame(),至于得到多少帧,通过 callback 通知
 
 private:
     QString mDeviceName;
