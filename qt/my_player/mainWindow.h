@@ -30,30 +30,26 @@
 #include <QSplitter>
 #include <QPainter>
 
-#include "videoThread.h"
-#include "audioThread.h"
+#include "apps/live/liveWidget.h"
 
 //class MyWidget : public QWidget {
-class MyWidget : public QMainWindow {   //主窗口我们选择从 QMainWindow 继承,这样可以有菜单栏 QMainWindow::menuBar() 可用
+class MainWidget : public QMainWindow {   //主窗口我们选择从 QMainWindow 继承,这样可以有菜单栏 QMainWindow::menuBar() 可用
 
     Q_OBJECT
 
 public:
-    MyWidget(QWidget *parent = 0);
-    ~MyWidget();
+    MainWidget(QWidget *parent = 0);
+    ~MainWidget();
 
 private slots:
     void onActOpen();
     void onActNew();
     void toggleStatusBar();
+    void reShow();
 
     //-----------------
-    void onBtnOpen();
-    void onBtnStartStop();
-    void onSeek(int);
-
-    void gotSigFrame(QImage);
-    void gotSigAFrame(AFrame);
+    void onBtnLive();
+    void onBtnPlayer();
 
 private:
     void initToolBar();
@@ -70,16 +66,10 @@ private:
     QAction *act_toggle_view;
 
     //---------------------
-    QLineEdit *ledit_input;
-    QPushButton *btn_open;
-    QPushButton *btn_start_stop;
-    QLabel *lbl_frame;
-    QSlider *slider_progress;
-    QLabel *lbl_progress;
+    QPushButton *btn_live;
+    QPushButton *btn_player;
 
-    videoThread *video_thread;
-    audioThread *audio_thread;
-    QImage mImg;
+    LiveWidget *live;
 
 protected:
     void keyPressEvent(QKeyEvent *e);   //处理按键事件

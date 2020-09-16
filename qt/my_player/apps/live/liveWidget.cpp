@@ -1,4 +1,4 @@
-#include "myWidget.h"
+#include "liveWidget.h"
 #include <iostream>
 #include <QKeyEvent>
 #include <QMoveEvent>
@@ -6,10 +6,11 @@
 #include <QFont>
 #include <QInputDialog>
 
-MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
 
-    initToolBar();
-    initMenuBar();
+LiveWidget::LiveWidget(QWidget *parent) : QWidget(parent) {
+
+    this->setAttribute(Qt::WA_DeleteOnClose, 1);
+    std::cout << "construct LiveWidget." << std::endl;
 
     //-----------------------------------------------------------------------
 
@@ -17,8 +18,8 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     this->ledit_input = new QLineEdit(this);
     this->btn_open = new QPushButton("open", this);
     this->btn_start_stop = new QPushButton("start", this);
-    connect(this->btn_open, &QPushButton::clicked, this, &MyWidget::onBtnOpen);
-    connect(this->btn_start_stop, &QPushButton::clicked, this, &MyWidget::onBtnStartStop);
+    connect(this->btn_open, &QPushButton::clicked, this, &LiveWidget::onBtnOpen);
+    connect(this->btn_start_stop, &QPushButton::clicked, this, &LiveWidget::onBtnStartStop);
     hbox_input->addWidget(this->ledit_input);
     hbox_input->addWidget(this->btn_open);
     hbox_input->addWidget(this->btn_start_stop);
@@ -27,11 +28,11 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     //this->lbl_frame->resize({this->width(), this->height()});
     this->lbl_frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    QHBoxLayout *hbox_progress = new QHBoxLayout();          
+    QHBoxLayout *hbox_progress = new QHBoxLayout();
     this->slider_progress = new QSlider(Qt::Horizontal);
     this->slider_progress->setRange(0, 200);
     this->lbl_progress = new QLabel("0", this);
-    connect(this->slider_progress, &QSlider::valueChanged, this, &MyWidget::onSeek);
+    connect(this->slider_progress, &QSlider::valueChanged, this, &LiveWidget::onSeek);
     hbox_progress->addWidget(slider_progress);
     hbox_progress->addWidget(lbl_progress);
 
@@ -39,7 +40,7 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     //timer_for_pbar->isActive()
     //timer_for_pbar->start(100); //每 100 ms 触发一次 timeout
     //timer_for_pbar->stop();
-    //connect(timer_for_pbar, &QTimer::timeout, this, &MyWidget::onTimerPbar);
+    //connect(timer_for_pbar, &QTimer::timeout, this, &LiveWidget::onTimerPbar);
     /* timer */
     //lbl_time = new QLabel("", this);
     //lbl_time->setFont(QFont("Purisa", 10));
@@ -48,15 +49,13 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     //lbl_time->setText(stime);
     //startTimer(1000);   //每 1000 ms 触发一次 timerEvent, 这个 timer 应该是 mainwindow默认创建了的
 
-    QVBoxLayout *vbox = new QVBoxLayout();          
+    QVBoxLayout *vbox = new QVBoxLayout();
     vbox->setSpacing(1);
     vbox->addLayout(hbox_input);
     vbox->addWidget(lbl_frame);
     vbox->addLayout(hbox_progress);
 
-    QWidget *cw = new QWidget(this);
-    cw->setLayout(vbox);
-    setCentralWidget(cw);
+    this->setLayout(vbox);
 
     //start reader thread
     video_thread = new videoThread();
@@ -64,11 +63,9 @@ MyWidget::MyWidget(QWidget *parent) : QMainWindow(parent) {
     connect(video_thread, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
     connect(audio_thread, SIGNAL(sigGotFrame(AFrame)), this, SLOT(gotSigAFrame(AFrame)));
     //-----------------------------------------------------------------------
-
-    initStatusBar();
 }
 
-MyWidget::~MyWidget() {
+LiveWidget::~LiveWidget() {
     if (this->video_thread) {
         if (this->video_thread->isRunning()) {
             this->video_thread->myStop();
@@ -85,71 +82,16 @@ MyWidget::~MyWidget() {
     }
 }
 
-void MyWidget::initToolBar() {
-    QPixmap pix_new("./res/new.png");
-    QPixmap pix_open("./res/open.png");
-    QPixmap pix_quit("./res/quit.png");
-
-    this->toolbar = addToolBar("main toolbar");
-    this->act_new = this->toolbar->addAction(QIcon(pix_new), "New File");
-    this->act_open = this->toolbar->addAction(QIcon(pix_open), "Open File");
-    this->act_quit = this->toolbar->addAction(QIcon(pix_quit), "Quit");
-    connect(this->act_new, &QAction::triggered, this, &MyWidget::onActNew);
-    connect(this->act_open, &QAction::triggered, this, &MyWidget::onActOpen);
-    connect(this->act_quit, &QAction::triggered, qApp, &QApplication::quit);
-}
-
-void MyWidget::initMenuBar () {
-    menuFile = menuBar()->addMenu("&File");
-    menuFile->addAction(this->act_new);
-    menuFile->addAction(this->act_open);
-    menuFile->addSeparator();
-    menuFile->addAction(this->act_quit);
-
-    this->act_toggle_view = new QAction("&View Status", this);
-    this->act_toggle_view->setCheckable(true);
-    this->act_toggle_view->setChecked(true);
-    connect(this->act_toggle_view, &QAction::triggered, this, &MyWidget::toggleStatusBar);
-    menuView = menuBar()->addMenu("&View");
-    menuView->addAction(this->act_toggle_view);
-
-    //qApp->setAttribute(Qt::AA_DontShowIconsInMenus, true); //将 AA_DontShowIconsInMenus 属性设为 false
-}
-
-void MyWidget::initStatusBar() {
-    statusBar()->showMessage("Ready");
-}
-
-void MyWidget::onActNew() {
-    std::cout << "in MyWidget::onActNew()." << std::endl;
-}
-
-void MyWidget::onActOpen() {
-    //QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.264 *.avi *.mov *.flv *.mkv *.ts *.mp3)");
-    QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.*)");
-    std::cout << "in MyWidget::onActOpen() :" << filePath.toStdString() <<std::endl;
-
-    this->ledit_input->setText(filePath);
-}
-
-void MyWidget::toggleStatusBar() {
-    if (this->act_toggle_view->isChecked()) {
-        std::cout << "in MyWidget::toggleStatusBar() 1." << std::endl;
-        statusBar()->show();
-    } else {
-        std::cout << "in MyWidget::toggleStatusBar() 0." << std::endl;
-        statusBar()->hide();
-    }
-}
-
-void MyWidget::keyPressEvent(QKeyEvent *e) {
+void LiveWidget::keyPressEvent(QKeyEvent *e) {
     if (e->key() == Qt::Key_Escape) {
         std::cout << "esc pressed." << std::endl;
-        qApp->quit();
+        //退出子widget, reshow main window
+        emit sigReshowMain();
+        this->close();
     }
 }
 
-void MyWidget::moveEvent(QMoveEvent *e) {
+void LiveWidget::moveEvent(QMoveEvent *e) {
     int x = e->pos().x();
     int y = e->pos().x();
 
@@ -157,13 +99,13 @@ void MyWidget::moveEvent(QMoveEvent *e) {
     setWindowTitle(text);
 }
 
-void MyWidget::onBtnOpen() {
+void LiveWidget::onBtnOpen() {
     std::cout << "onBtnOpen." << std::endl;
     QString filePath = QFileDialog::getOpenFileName(this, "chose file to play", "/", "(*.*)");
     this->ledit_input->setText(filePath);
 }
 
-void MyWidget::onBtnStartStop() {
+void LiveWidget::onBtnStartStop() {
     std::cout << "onBtnStartStop." << std::endl;
     QString path = this->ledit_input->text();
     if (!path.isEmpty()) {
@@ -185,18 +127,18 @@ void MyWidget::onBtnStartStop() {
         this->btn_start_stop->setText("stop");
     }
 }
-void MyWidget::onSeek(int i) {
+void LiveWidget::onSeek(int i) {
     std::cout << "onSeek." <<i<< std::endl;
 
 }
-void MyWidget::gotSigFrame(QImage img) {
+void LiveWidget::gotSigFrame(QImage img) {
     mImg = img.scaled(this->lbl_frame->size(), Qt::IgnoreAspectRatio);
     this->lbl_frame->setPixmap(QPixmap::fromImage(mImg));
     //this->lbl_frame->resize(mImg.size());
     this->lbl_frame->show();
 }
 
-void MyWidget::gotSigAFrame(AFrame af) {
+void LiveWidget::gotSigAFrame(AFrame af) {
     //qt 播放 pcm audio
     //https://blog.csdn.net/caoshangpa/article/details/51224678
     printf("MyWidget::gotSigAFrame %p,len=%d, %x %x %x %x %x %x %x %x\n", af.data, af.len, 
@@ -204,7 +146,7 @@ void MyWidget::gotSigAFrame(AFrame af) {
             af.data[4],af.data[5],af.data[6],af.data[7]);
 }
 
-//void MyWidget::paintEvent(QPaintEvent *event)
+//void LiveWidget::paintEvent(QPaintEvent *event)
 //{
 //    //QPainter painter(this);
 //    //painter.setBrush(Qt::black);
