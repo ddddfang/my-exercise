@@ -129,6 +129,14 @@ void MainWidget::onBtnLive() {
 
 void MainWidget::onBtnPlayer() {
     std::cout << "onBtnPlayer." << std::endl;
+    this->hide();                       //主界面关闭
+    this->player = new PlayerWidget();  //新建子界面
+    connect(this->player, SIGNAL(sigReshowMain()), this, SLOT(reShow())); //当点击子界面时，调用主界面的reshow()函数
+
+    this->player->resize(800, 600);
+    this->player->move(300, 300);
+    this->player->setWindowTitle("player");
+    this->player->show();                 //子界面出现
 }
 
 void MainWidget::onBtnGPlayer() {

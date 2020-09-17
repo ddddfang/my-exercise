@@ -27,12 +27,7 @@ extern "C"
 }
 #endif
 
-
-#define MAX_AUDIO_FRAME_SIZE    192000
-typedef struct AFrame {
-    uint8_t data[MAX_AUDIO_FRAME_SIZE];
-    int len;
-} AFrame;
+#include "common.h" //AFrame
 
 
 //ffmpeg -devices 列出所有可用的 devices

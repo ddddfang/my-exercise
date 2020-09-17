@@ -34,19 +34,17 @@
 #include <QAudioOutput>
 
 #include "common.h" //AFrame and MyIODevice
-#include "videoThread.h"
-#include "audioThread.h"
+#include "demuxThread.h"
 
 
 
-
-class LiveWidget : public QWidget {
+class PlayerWidget : public QWidget {
 
     Q_OBJECT
 
 public:
-    LiveWidget(QWidget *parent = 0);
-    ~LiveWidget();
+    PlayerWidget(QWidget *parent = 0);
+    ~PlayerWidget();
 
 signals:
     void sigReshowMain();
@@ -69,8 +67,7 @@ private:
     QSlider *slider_progress;
     QLabel *lbl_progress;
 
-    videoThread *video_thread;
-    audioThread *audio_thread;
+    demuxThread *demux_thread;
     QImage mImg;            //video images, 拿到立即显示
     QList<AFrame> aFrames;  //audio frames, 拿到了需要缓存一下
     QAudioOutput *aout;
@@ -79,5 +76,4 @@ private:
 protected:
     void keyPressEvent(QKeyEvent *e);   //处理按键事件
     void closeEvent(QCloseEvent * e);
-    //void paintEvent(QPaintEvent *e);
 };

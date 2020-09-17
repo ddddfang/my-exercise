@@ -31,6 +31,8 @@
 #include <QPainter>
 
 #include "apps/live/liveWidget.h"
+#include "apps/player/playerWidget.h"
+
 
 //class MyWidget : public QWidget {
 class MainWidget : public QMainWindow {   //主窗口我们选择从 QMainWindow 继承,这样可以有菜单栏 QMainWindow::menuBar() 可用
@@ -72,6 +74,7 @@ private:
     QPushButton *btn_gplayer;
 
     LiveWidget *live;
+    PlayerWidget *player;
 
 protected:
     void keyPressEvent(QKeyEvent *e);   //处理按键事件

@@ -18,13 +18,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 # Input
+HEADERS += common.h
 HEADERS += mainWindow.h
 HEADERS += apps/live/liveWidget.h apps/live/videoThread.h ./apps/live/audioThread.h
+HEADERS += apps/player/playerWidget.h apps/player/demuxThread.h
 HEADERS += utils/YuvFileReader.h utils/OpencvReader.h utils/ffCameraReader.h utils/ffMicroReader.h
 
 SOURCES += abc.cpp
 SOURCES += mainWindow.cpp
 SOURCES += apps/live/liveWidget.cpp apps/live/videoThread.cpp apps/live/audioThread.cpp
+SOURCES += apps/player/playerWidget.cpp apps/player/demuxThread.cpp
 SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp utils/ffCameraReader.cpp utils/ffMicroReader.cpp
 
 
