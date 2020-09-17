@@ -28,5 +28,6 @@ SOURCES += apps/live/liveWidget.cpp apps/live/videoThread.cpp apps/live/audioThr
 SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp utils/ffCameraReader.cpp utils/ffMicroReader.cpp
 
 
+QT += multimedia
 QT += widgets core
 QT += gui

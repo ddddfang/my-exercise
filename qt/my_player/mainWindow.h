@@ -50,6 +50,7 @@ private slots:
     //-----------------
     void onBtnLive();
     void onBtnPlayer();
+    void onBtnGPlayer();
 
 private:
     void initToolBar();
@@ -68,6 +69,7 @@ private:
     //---------------------
     QPushButton *btn_live;
     QPushButton *btn_player;
+    QPushButton *btn_gplayer;
 
     LiveWidget *live;
 

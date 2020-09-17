@@ -79,7 +79,7 @@ ffMicroReader::ffMicroReader(QString path) {
 #endif
 
 exit:
-    std::cout << "construct exit." << std::endl;
+    std::cout << "construct ffMicroReader done." << std::endl;
 }
 
 ffMicroReader::~ffMicroReader() {

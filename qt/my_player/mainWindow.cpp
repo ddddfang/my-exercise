@@ -15,15 +15,19 @@ MainWidget::MainWidget(QWidget *parent) : QMainWindow(parent) {
 
     this->btn_live = new QPushButton("live", this);
     this->btn_player = new QPushButton("player", this);
+    this->btn_gplayer = new QPushButton("gstreamer player", this);
     this->btn_live->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     this->btn_player->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    this->btn_gplayer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     connect(this->btn_live, &QPushButton::clicked, this, &MainWidget::onBtnLive);
     connect(this->btn_player, &QPushButton::clicked, this, &MainWidget::onBtnPlayer);
+    connect(this->btn_gplayer, &QPushButton::clicked, this, &MainWidget::onBtnGPlayer);
 
     QVBoxLayout *vbox = new QVBoxLayout();          
     vbox->setSpacing(1);
     vbox->addWidget(this->btn_live);
     vbox->addWidget(this->btn_player);
+    vbox->addWidget(this->btn_gplayer);
 
 
     QWidget *cw = new QWidget(this);
@@ -125,5 +129,9 @@ void MainWidget::onBtnLive() {
 
 void MainWidget::onBtnPlayer() {
     std::cout << "onBtnPlayer." << std::endl;
+}
+
+void MainWidget::onBtnGPlayer() {
+    std::cout << "onBtnGPlayer." << std::endl;
 }
 

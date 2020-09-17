@@ -7,6 +7,32 @@
 #include <QInputDialog>
 
 
+
+qint64 MyIODevice::readData(char *data, qint64 maxlen) {
+    qint64 readlen = 0;
+    qint64 reslen = maxlen;
+
+    while(!pFrames->isEmpty()) {
+        if ((*pFrames)[0].len > reslen) {
+            memcpy(data, (*pFrames)[0].data, reslen);
+            (*pFrames)[0].len -= reslen;
+            readlen += reslen;
+            return readlen;
+        } else {
+            AFrame af = pFrames->takeFirst();
+            memcpy(data, af.data, af.len);
+            reslen -= af.len;
+            readlen += af.len;
+        }
+    }
+    std::cout << "in myIODevice::readData. read "<<readlen<<" bytes." << std::endl;
+    return readlen;
+}
+
+
+
+
+
 LiveWidget::LiveWidget(QWidget *parent) : QWidget(parent) {
 
     this->setAttribute(Qt::WA_DeleteOnClose, 1);
@@ -62,6 +88,25 @@ LiveWidget::LiveWidget(QWidget *parent) : QWidget(parent) {
     audio_thread = new audioThread();
     connect(video_thread, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
     connect(audio_thread, SIGNAL(sigGotFrame(AFrame)), this, SLOT(gotSigAFrame(AFrame)));
+
+    QAudioFormat format;
+    format.setCodec("audio/pcm");
+    format.setSampleRate(48000);
+    format.setSampleSize(16);
+    format.setSampleType(QAudioFormat::SignedInt);
+    format.setChannelCount(2);
+    format.setByteOrder(QAudioFormat::LittleEndian);
+
+    QAudioDeviceInfo info = QAudioDeviceInfo::defaultOutputDevice();
+    if (!info.isFormatSupported(format)) {
+        std::cout << "audio format not support ?" << std::endl;
+        format = info.nearestFormat(format);
+    } else {
+        std::cout << "audio format support." << std::endl;
+    }
+
+    this->aout = new QAudioOutput(format, qApp);
+    this->adev = new MyIODevice(&(this->aFrames), qApp);
     //-----------------------------------------------------------------------
 }
 
@@ -80,6 +125,13 @@ LiveWidget::~LiveWidget() {
         }
         delete this->audio_thread;
     }
+    if (this->adev) {
+        delete this->adev;
+    }
+    if (this->aout) {
+        delete this->aout;
+    }
+    std::cout << "destruct LiveWidget done." << std::endl;
 }
 
 void LiveWidget::keyPressEvent(QKeyEvent *e) {
@@ -89,6 +141,12 @@ void LiveWidget::keyPressEvent(QKeyEvent *e) {
         emit sigReshowMain();
         this->close();
     }
+}
+
+void LiveWidget::closeEvent(QCloseEvent * e) {
+    std::cout << "you closed live widget." << std::endl;
+    emit sigReshowMain();
+    this->close();
 }
 
 void LiveWidget::moveEvent(QMoveEvent *e) {
@@ -115,15 +173,22 @@ void LiveWidget::onBtnStartStop() {
         if (this->video_thread->isPaused()) {   //原来已经启动,但是是被pasued的状态
             this->video_thread->myPause(false); //现在解除 paused 状态
             this->audio_thread->myPause(false); //现在解除 paused 状态
+            this->adev->open(QIODevice::ReadOnly);  //打开audio out
+            this->aout->start(this->adev);          //
+
             this->btn_start_stop->setText("stop");
         } else {
             this->video_thread->myPause(true); //现在进入 paused 状态
             this->audio_thread->myPause(true); //现在进入 paused 状态
+            this->aout->stop();     //关闭audio out
+            this->adev->close();    //
             this->btn_start_stop->setText("start");
         }
     } else {    //原来是没有启动的状态
         this->video_thread->start();    //那么现在启动它,现在状态是已经启动,可能的操作是 stop
         this->audio_thread->start();    //那么现在启动它,现在状态是已经启动,可能的操作是 stop
+        this->adev->open(QIODevice::ReadOnly);  //打开audio out
+        this->aout->start(this->adev);          //
         this->btn_start_stop->setText("stop");
     }
 }
@@ -140,10 +205,28 @@ void LiveWidget::gotSigFrame(QImage img) {
 
 void LiveWidget::gotSigAFrame(AFrame af) {
     //qt 播放 pcm audio
+    //https://blog.csdn.net/u011283226/article/details/101024093
     //https://blog.csdn.net/caoshangpa/article/details/51224678
-    printf("MyWidget::gotSigAFrame %p,len=%d, %x %x %x %x %x %x %x %x\n", af.data, af.len, 
-            af.data[0],af.data[1],af.data[2],af.data[3], 
-            af.data[4],af.data[5],af.data[6],af.data[7]);
+    //this->aFrames << af;
+    this->aFrames.append(af);   //append, prepend 都可用
+    ////for (AFrame afi : this->aFrames) {
+    //for (int i = 0; i < this->aFrames.size(); i++) {
+    //    AFrame afi = this->aFrames[i];
+    //    printf("aframes size %d,LiveWidget::gotSigAFrame %p,len=%d, %x %x %x %x %x %x %x %x\n", this->aFrames.size(),afi.data, afi.len, 
+    //            afi.data[0],afi.data[1],afi.data[2],afi.data[3], 
+    //            afi.data[4],afi.data[5],afi.data[6],afi.data[7]);
+    //}
+
+    //QAudioFormat afmt;
+    //afmt.setSampleRate(44100);
+    //afmt.setChannelCount(2);
+    //afmt.setSampleSize(16);
+    //afmt.setCodec("audio/pcm");
+    //afmt.setByteOrder(QAudioFormat::LittleEndian);
+    //afmt.setSampleType(QAudioFormat::UnSignedInt);
+
+    //QAudioOutput *aoutput = new QAudioOutput(audioFormat, this);
+    //QIODevice *dev = aoutput->start();
 }
 
 //void LiveWidget::paintEvent(QPaintEvent *event)
