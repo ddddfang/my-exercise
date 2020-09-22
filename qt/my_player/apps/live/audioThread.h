@@ -14,9 +14,6 @@ class audioThread : public QThread {
 
     Q_OBJECT
 
-signals:
-    void sigGotFrame(AFrame);
-
 private slots:
     void onGotFrame(AFrame);
 

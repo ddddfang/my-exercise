@@ -79,13 +79,12 @@ void audioThread::run() {
     return;
 }
 
-//此回调函数 就是吧拿到的img再发送出去,myWidget只和thread接触,不和底下接触
 void audioThread::onGotFrame(AFrame af) {
     if (af.len <= 0) {
         std::cout << "reach the file end." << std::endl;
         this->myStop();
         return;
     }
-    emit sigGotFrame(af);
+    std::cout << "got audio frame, size=" << af.len << std::endl;
 }
 

@@ -58,7 +58,6 @@ private slots:
     void onSeek(int);
 
     void gotSigFrame(QImage);
-    void gotSigAFrame(AFrame);
 
 private:
     //---------------------
@@ -72,9 +71,6 @@ private:
     videoThread *video_thread;
     audioThread *audio_thread;
     QImage mImg;            //video images, 拿到立即显示
-    QList<AFrame> aFrames;  //audio frames, 拿到了需要缓存一下
-    QAudioOutput *aout;
-    MyIODevice *adev;
 
 protected:
     void keyPressEvent(QKeyEvent *e);   //处理按键事件

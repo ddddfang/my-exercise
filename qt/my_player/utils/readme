@@ -9,3 +9,14 @@ OpencvReader:
 ffCameraReader:
     调用 ffmpeg api 采集 camera video. ffmpeg 进一步调用 v4l2
     根据 my-demos/ffmpeg-demo/08.ffmpeg_capture 而来
+
+
+音视频采集的ffmpeg cmd:
+ffmpeg -f video4linux2 -i /dev/video0 -f alsa -i default -vcodec libx264 -acodec aac -strict -2 mycamera.mkv
+
+声音噪声很大,去噪?
+https://blog.csdn.net/dancing_night/article/details/43527917
+
+
+todo:
+添加一个flush的接口，在thread要推出的时候调用
