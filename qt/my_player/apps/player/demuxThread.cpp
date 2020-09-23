@@ -2,6 +2,7 @@
 #include <iostream>
 #include <QFile>
 
+#include "utils/fileDmx.h"
 
 demuxThread::demuxThread()
     : mStop(false), mPause(false), mFilePath("") {
@@ -47,18 +48,10 @@ void demuxThread::run() {
     std::cout << "demuxThread run: threadid = " << QThread::currentThreadId() << std::endl;
     int fps = 25;
 
-    //YuvFileReader yuv_reader(mFilePath);
-    //connect(&yuv_reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(onGotFrame(QImage)));
-    //yuv_reader.setWidthHeight(640, 360);
-    //fps = yuv_reader.getFps();
-
-    //OpencvReader cv_reader(mFilePath);
-    //connect(&cv_reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(onGotFrame(QImage)));
-    //fps = cv_reader.getFps();
-
     //ffCameraReader ff_reader(mFilePath);
     //connect(&ff_reader, SIGNAL(sigGotFrame(QImage)), this, SLOT(onGotFrame(QImage)));
     //fps = ff_reader.getFps();
+    fileDmx demux(mFilePath);
 
     while (true) {
         mMutex.lock();
@@ -76,18 +69,10 @@ void demuxThread::run() {
 
 
         //readFrames 将会 emit 信号,由本thread的 onGotFrame 接收
-        //if (yuv_reader.readFrames() == -1) {
-        //    std::cout << "encounter error or eof." << std::endl;
-        //    this->stop();
-        //}
-        //if (cv_reader.readFrames() == -1) {
-        //    std::cout << "encounter error or eof." << std::endl;
-        //    this->stop();
-        //}
-        //if (ff_reader.readFrames() == -1) {
-        //    std::cout << "encounter error or eof." << std::endl;
-        //    this->myStop();
-        //}
+        if (demux.readFrames() == -1) {
+            std::cout << "encounter error or eof." << std::endl;
+            this->myStop();
+        }
 
 
         QThread::msleep(1000/fps);

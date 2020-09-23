@@ -22,13 +22,13 @@ HEADERS += common.h
 HEADERS += mainWindow.h
 HEADERS += apps/live/liveWidget.h apps/live/videoThread.h ./apps/live/audioThread.h
 HEADERS += apps/player/playerWidget.h apps/player/demuxThread.h
-HEADERS += utils/YuvFileReader.h utils/OpencvReader.h utils/ffCameraReader.h utils/ffMicroReader.h
+HEADERS += utils/YuvFileReader.h utils/OpencvReader.h utils/ffCameraReader.h utils/ffMicroReader.h utils/fileDmx.h
 
 SOURCES += abc.cpp
 SOURCES += mainWindow.cpp
 SOURCES += apps/live/liveWidget.cpp apps/live/videoThread.cpp apps/live/audioThread.cpp
 SOURCES += apps/player/playerWidget.cpp apps/player/demuxThread.cpp
-SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp utils/ffCameraReader.cpp utils/ffMicroReader.cpp
+SOURCES += utils/YuvFileReader.cpp utils/OpencvReader.cpp utils/ffCameraReader.cpp utils/ffMicroReader.cpp utils/fileDmx.cpp
 
 
 QT += multimedia
