@@ -26,6 +26,8 @@ extern "C"
 }
 #endif
 
+#include "common.h"
+
 //ffmpeg -devices 列出所有可用的 devices
 
 class fileDmx : public QObject {
@@ -33,7 +35,8 @@ class fileDmx : public QObject {
     Q_OBJECT
 
 signals:
-    void sigGotFrame(QImage);
+    void sigGotVideoFrame(QImage);
+    void sigGotAudioFrame(AFrame);
 
 public:
     fileDmx(QString path);

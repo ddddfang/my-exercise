@@ -7,6 +7,7 @@
 //#include "utils/YuvFileReader.h"
 //#include "utils/OpencvReader.h"
 //#include "utils/ffCameraReader.h"
+#include "common.h"
 
 class demuxThread : public QThread {
 
@@ -16,7 +17,8 @@ signals:
     void sigGotFrame(QImage);
 
 private slots:
-    void onGotFrame(QImage);
+    void onGotVideoFrame(QImage);
+    void onGotAudioFrame(AFrame);
 
 public:
     explicit demuxThread();

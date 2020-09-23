@@ -12,6 +12,7 @@ MainWidget::MainWidget(QWidget *parent) : QMainWindow(parent) {
     initMenuBar();
 
     //-----------------------------------------------------------------------
+    qRegisterMetaType<AFrame>("AFrame");    //这里注册我们使用的 AFrame 类,不然在 connect() 的时候 qt 不认
 
     this->btn_live = new QPushButton("live", this);
     this->btn_player = new QPushButton("player", this);

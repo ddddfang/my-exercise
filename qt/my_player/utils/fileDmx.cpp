@@ -68,10 +68,10 @@ fileDmx::fileDmx(QString path) {
     printf("pix_fmt:%s\n", av_get_pix_fmt_name(this->pVCodecCtx->pix_fmt));
 
     printf("audio codec info:\n");
-    printf("sample_fmt %s\n", av_get_sample_fmt_name(this->pACodecCtx->sample_fmt));   //1(AV_SAMPLE_FMT_S16)
-    //printf("frame_size %d\n", this->pACodecCtx->frame_size);   //4
-    printf("sample_rate %d\n", this->pACodecCtx->sample_rate); //48000
-    //printf("channel_layout %ld\n", av_get_default_channel_layout(this->pACodecCtx->channels)); //3(AV_CH_LAYOUT_STEREO)
+    printf("sample_fmt %s\n", av_get_sample_fmt_name(this->pACodecCtx->sample_fmt));
+    //printf("frame_size %d\n", this->pACodecCtx->frame_size);
+    printf("sample_rate %d\n", this->pACodecCtx->sample_rate);
+    //printf("channel_layout %ld\n", av_get_default_channel_layout(this->pACodecCtx->channels));
     printf("channel %d\n", this->pACodecCtx->channels); //3(AV_CH_LAYOUT_STEREO)
 
     this->pFrame = av_frame_alloc();     //原始 frame, 鬼知道什么格式
@@ -160,7 +160,8 @@ int fileDmx::readFrames() {
                     }
                     src += pFrame4QImage->linesize[0];  //看起来 linesize[0] 是图像宽度,的3倍啊
                 }
-                //emit sigGotFrame(img.copy());
+                emit sigGotVideoFrame(img.copy());
+
                 for (int i = 0; i < pFrame4QImage->height; i++) {
                     fwrite(pFrame4QImage->data[0] + i * pFrame4QImage->linesize[0], 1, pFrame4QImage->width, this->pFileYuv);
                 }
@@ -189,6 +190,12 @@ int fileDmx::readFrames() {
                     break;
                 }
                 fwrite(pFrame->data[0], 1, pFrame->linesize[0], this->pFilePcm);
+                AFrame audio_frame;
+                audio_frame.len = this->pFrame->linesize[0];
+                if (audio_frame.len > 0) {
+                    memcpy(audio_frame.data, this->pFrame->data[0], audio_frame.len * sizeof(uint8_t));
+                    emit sigGotAudioFrame(audio_frame);
+                }
             }
         }
     }

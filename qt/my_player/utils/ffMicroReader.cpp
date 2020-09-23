@@ -9,8 +9,6 @@ ffMicroReader::ffMicroReader(QString path) {
     AVCodec *pCodec = NULL;
     this->mDeviceName = "default";
 
-    qRegisterMetaType<AFrame>("AFrame");    //这里注册我们使用的 AFrame 类,不然在 connect() 的时候 qt 不认
-
     avdevice_register_all();    //Register Device
 
     this->pkt = av_packet_alloc();;
