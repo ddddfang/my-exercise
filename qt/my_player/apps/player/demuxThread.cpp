@@ -92,11 +92,11 @@ void demuxThread::onGotVideoFrame(QImage img) {
         this->myStop();
         return;
     }
-    std::cout << "got a video frame, and here emit it" << std::endl;
-    //emit sigGotFrame(img);
+    //std::cout << "got a video frame, and here emit it" << std::endl;
+    emit sigGotVideoFrame(img);
 }
 
 void demuxThread::onGotAudioFrame(AFrame af) {
-    std::cout << "got a audio frame, and here emit it" << std::endl;
-
+    //std::cout << "got a audio frame, and here emit it" << std::endl;
+    emit sigGotAudioFrame(af);
 }

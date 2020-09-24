@@ -55,8 +55,8 @@ private slots:
     void onBtnStartStop();
     void onSeek(int);
 
-    void gotSigFrame(QImage);
-    void gotSigAFrame(AFrame);
+    void gotSigVideoFrame(QImage);
+    void gotSigAudioFrame(AFrame);
 
 private:
     //---------------------
@@ -73,6 +73,7 @@ private:
     QAudioOutput *aout;
     MyIODevice *adev;
 
+    FILE *pFilePcm;
 protected:
     void keyPressEvent(QKeyEvent *e);   //处理按键事件
     void closeEvent(QCloseEvent * e);

@@ -47,8 +47,8 @@ PlayerWidget::PlayerWidget(QWidget *parent) : QWidget(parent) {
 
     //start reader thread
     demux_thread = new demuxThread();
-    connect(demux_thread, SIGNAL(sigGotFrame(QImage)), this, SLOT(gotSigFrame(QImage)));
-    //connect(demux_thread, SIGNAL(sigGotFrame(AFrame)), this, SLOT(gotSigAFrame(AFrame)));
+    connect(demux_thread, SIGNAL(sigGotVideoFrame(QImage)), this, SLOT(gotSigVideoFrame(QImage)));
+    connect(demux_thread, SIGNAL(sigGotAudioFrame(AFrame)), this, SLOT(gotSigAudioFrame(AFrame)));
 
     QAudioFormat format;
     format.setCodec("audio/pcm");
@@ -68,10 +68,14 @@ PlayerWidget::PlayerWidget(QWidget *parent) : QWidget(parent) {
 
     this->aout = new QAudioOutput(format, qApp);
     this->adev = new MyIODevice(&(this->aFrames), qApp);
+
+    this->pFilePcm = fopen("test_out.pcm", "wb");
     //-----------------------------------------------------------------------
 }
 
 PlayerWidget::~PlayerWidget() {
+    fclose(this->pFilePcm);
+
     if (this->demux_thread) {
         if (this->demux_thread->isRunning()) {
             this->demux_thread->myStop();
@@ -136,23 +140,26 @@ void PlayerWidget::onBtnStartStop() {
         this->btn_start_stop->setText("stop");
     }
 }
+
 void PlayerWidget::onSeek(int i) {
     std::cout << "onSeek." <<i<< std::endl;
 
 }
-void PlayerWidget::gotSigFrame(QImage img) {
+
+void PlayerWidget::gotSigVideoFrame(QImage img) {
     mImg = img.scaled(this->lbl_frame->size(), Qt::IgnoreAspectRatio);
     this->lbl_frame->setPixmap(QPixmap::fromImage(mImg));
     //this->lbl_frame->resize(mImg.size());
     this->lbl_frame->show();
 }
 
-void PlayerWidget::gotSigAFrame(AFrame af) {
+void PlayerWidget::gotSigAudioFrame(AFrame af) {
     //qt 播放 pcm audio
     //https://blog.csdn.net/u011283226/article/details/101024093
     //https://blog.csdn.net/caoshangpa/article/details/51224678
     //this->aFrames << af;
-    this->aFrames.append(af);   //append, prepend 都可用
+    //this->aFrames.append(af);   //append, prepend 都可用
+    fwrite(af.data, 1, af.len, this->pFilePcm);
     ////for (AFrame afi : this->aFrames) {
     //for (int i = 0; i < this->aFrames.size(); i++) {
     //    AFrame afi = this->aFrames[i];

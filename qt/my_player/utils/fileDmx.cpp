@@ -63,20 +63,20 @@ fileDmx::fileDmx(QString path) {
         std::cout << "Could not open codec." << std::endl;
     }
     printf("video codec info:\n");
-    printf("sample_fmt %d\n", this->pVCodecCtx->width);
-    printf("frame_size %d\n", this->pVCodecCtx->height);
-    printf("pix_fmt:%s\n", av_get_pix_fmt_name(this->pVCodecCtx->pix_fmt));
+    printf("---sample_fmt %d\n", this->pVCodecCtx->width);
+    printf("---frame_size %d\n", this->pVCodecCtx->height);
+    printf("---pix_fmt:%s\n", av_get_pix_fmt_name(this->pVCodecCtx->pix_fmt));
 
     printf("audio codec info:\n");
-    printf("sample_fmt %s\n", av_get_sample_fmt_name(this->pACodecCtx->sample_fmt));
-    //printf("frame_size %d\n", this->pACodecCtx->frame_size);
-    printf("sample_rate %d\n", this->pACodecCtx->sample_rate);
-    //printf("channel_layout %ld\n", av_get_default_channel_layout(this->pACodecCtx->channels));
-    printf("channel %d\n", this->pACodecCtx->channels); //3(AV_CH_LAYOUT_STEREO)
+    printf("---sample_fmt %s\n", av_get_sample_fmt_name(this->pACodecCtx->sample_fmt));
+    //printf("---frame_size %d\n", this->pACodecCtx->frame_size);
+    printf("---sample_rate %d\n", this->pACodecCtx->sample_rate);
+    //printf("---channel_layout %ld\n", av_get_default_channel_layout(this->pACodecCtx->channels));
+    printf("---channel %d\n", this->pACodecCtx->channels); //3(AV_CH_LAYOUT_STEREO)
 
     this->pFrame = av_frame_alloc();     //原始 frame, 鬼知道什么格式
     this->pFrame4QImage = av_frame_alloc();  //统一转换为 yuv420p
-    this->pFrame4QImage->format = AV_PIX_FMT_YUV420P;//AV_PIX_FMT_RGB24; QImage 只支持rgb格式
+    this->pFrame4QImage->format = AV_PIX_FMT_RGB24;//AV_PIX_FMT_YUV420P; QImage 只支持rgb格式
     this->pFrame4QImage->width = this->pVCodecCtx->width;
     this->pFrame4QImage->height = this->pVCodecCtx->height;
     ret = av_frame_get_buffer(this->pFrame4QImage, 32);   //32字节对齐. ffmpeg/doc/examples/muxing.c 里面就是这样分配的
@@ -87,14 +87,14 @@ fileDmx::fileDmx(QString path) {
     this->img_convert_ctx = sws_getContext( this->pVCodecCtx->width, this->pVCodecCtx->height, this->pVCodecCtx->pix_fmt,
                                             this->pVCodecCtx->width, this->pVCodecCtx->height, (AVPixelFormat)this->pFrame4QImage->format,
                                             SWS_BICUBIC, NULL, NULL, NULL); 
-    this->pFileYuv = fopen("test_out.yuv", "wb");
-    this->pFilePcm = fopen("test_out.pcm", "wb");
+    //this->pFileYuv = fopen("test_out.yuv", "wb");
+    //this->pFilePcm = fopen("test_out.pcm", "wb");
 }
 
 fileDmx::~fileDmx() {
     std::cout << "destruct fileDmx" << std::endl;
-    fclose(this->pFilePcm);
-    fclose(this->pFileYuv);
+    //fclose(this->pFilePcm);
+    //fclose(this->pFileYuv);
     if (this->img_convert_ctx) {
         sws_freeContext(this->img_convert_ctx);
     }
@@ -162,19 +162,17 @@ int fileDmx::readFrames() {
                 }
                 emit sigGotVideoFrame(img.copy());
 
-                for (int i = 0; i < pFrame4QImage->height; i++) {
-                    fwrite(pFrame4QImage->data[0] + i * pFrame4QImage->linesize[0], 1, pFrame4QImage->width, this->pFileYuv);
-                }
-                for (int i = 0; i < pFrame4QImage->height/2; i++) {
-                    fwrite(pFrame4QImage->data[1] + i * pFrame4QImage->linesize[1], 1, pFrame4QImage->width/2, this->pFileYuv);
-                }
-                for (int i = 0; i < pFrame4QImage->height/2; i++) {
-                    fwrite(pFrame4QImage->data[2] + i * pFrame4QImage->linesize[2], 1, pFrame4QImage->width/2, this->pFileYuv);
-                }
+                //for (int i = 0; i < pFrame4QImage->height; i++) { //按 yuv420 方式存储
+                //    fwrite(pFrame4QImage->data[0] + i * pFrame4QImage->linesize[0], 1, pFrame4QImage->width, this->pFileYuv);
+                //}
+                //for (int i = 0; i < pFrame4QImage->height/2; i++) {
+                //    fwrite(pFrame4QImage->data[1] + i * pFrame4QImage->linesize[1], 1, pFrame4QImage->width/2, this->pFileYuv);
+                //}
+                //for (int i = 0; i < pFrame4QImage->height/2; i++) {
+                //    fwrite(pFrame4QImage->data[2] + i * pFrame4QImage->linesize[2], 1, pFrame4QImage->width/2, this->pFileYuv);
+                //}
             }
         } else if (this->pkt->stream_index == this->audioIndex) {
-            //this->aFrames.append(af);   //append, prepend 都可用
-        
             ret = avcodec_send_packet(this->pACodecCtx, this->pkt);
             if (ret < 0) {
                 std::cout << "Error sending a audio packet for decoding." << std::endl;
@@ -189,7 +187,7 @@ int fileDmx::readFrames() {
                     std::cout << "Error during decoding." << std::endl;
                     break;
                 }
-                fwrite(pFrame->data[0], 1, pFrame->linesize[0], this->pFilePcm);
+                //fwrite(pFrame->data[0], 1, pFrame->linesize[0], this->pFilePcm);
                 AFrame audio_frame;
                 audio_frame.len = this->pFrame->linesize[0];
                 if (audio_frame.len > 0) {

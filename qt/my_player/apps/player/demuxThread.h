@@ -14,7 +14,8 @@ class demuxThread : public QThread {
     Q_OBJECT
 
 signals:
-    void sigGotFrame(QImage);
+    void sigGotVideoFrame(QImage);
+    void sigGotAudioFrame(AFrame);
 
 private slots:
     void onGotVideoFrame(QImage);
