@@ -47,12 +47,26 @@ def drawTree(my_turtle, line_len):
         my_turtle.right(30)
 
 #绘制谢尔平斯三角形
-def drawTrangle
+def drawTrangle(points, color, my_turtle):
+    my_turtle.fillcolor(color)
+    my_turtle.up()
+    my_turtle.goto(points[0])
+    my_turtle.down()
+    my_turtle.begin_fill()
+    my_turtle.goto(points[1])
+    my_turtle.goto(points[2])
+    my_turtle.goto(points[0])
+    my_turtle.end_fill()
+
 import turtle
 myturtle = turtle.Turtle()
 mywin = myturtle.getscreen()
 
 #drawSpiral(myturtle, 100)
-drawTree(myturtle, 50)
+#drawTree(myturtle, 50)
+points = [(-500,-250), [0,500], [500,-250]]
+colors = ['blue', 'red', 'green', 'white', 'yellow', 'orange']
+drawTrangle(points, colors[0], myturtle)
+
 mywin.exitonclick()
 
