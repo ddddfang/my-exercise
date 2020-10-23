@@ -58,6 +58,16 @@ def drawTrangle(points, color, my_turtle):
     my_turtle.goto(points[0])
     my_turtle.end_fill()
 
+def getMid(pa, pb):
+    return (pa[0]+pb[0])//2,(pa[1]+pb[1])//2
+
+def draw(degree, color, points, my_turtle):
+    drawTrangle(points, color[degree], my_turtle)
+    if degree > 0:
+        draw(degree - 1, color, [points[0], getMid(points[0],points[1]), getMid(points[0],points[2])], my_turtle)
+        draw(degree - 1, color, [points[1], getMid(points[1],points[0]), getMid(points[1],points[2])], my_turtle)
+        draw(degree - 1, color, [points[2], getMid(points[2],points[0]), getMid(points[2],points[1])], my_turtle)
+
 import turtle
 myturtle = turtle.Turtle()
 mywin = myturtle.getscreen()
@@ -66,7 +76,8 @@ mywin = myturtle.getscreen()
 #drawTree(myturtle, 50)
 points = [(-500,-250), [0,500], [500,-250]]
 colors = ['blue', 'red', 'green', 'white', 'yellow', 'orange']
-drawTrangle(points, colors[0], myturtle)
+#drawTrangle(points, colors[0], myturtle)
+draw(5, colors, points, myturtle)
 
 mywin.exitonclick()
 
