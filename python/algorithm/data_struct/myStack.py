@@ -115,7 +115,8 @@ def postfixVal(postfixExpr):
 
     for token in tokenlist:
         if token.isdigit():
-            operandstack.push(int(token))
+            #operandstack.push(int(token))
+            operandstack.push(eval(token))
         else:
             operand2 = operandstack.pop()
             operand1 = operandstack.pop()

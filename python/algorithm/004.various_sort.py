@@ -11,7 +11,7 @@ def bubble_sort(nums):
         for j in range(0,len(nums)-i):
             if nums[j] > nums[j+1]:
                 nums[j],nums[j+1] = nums[j+1],nums[j]
-        return nums
+    return nums
 
 ############################## 选择排序 #######################################
 #找到数组的最小值的index
@@ -28,7 +28,7 @@ def select_sort(arr):
     new_array = []
     for i in range(len(arr)):
         smallest_index = find_smallest(arr)
-        new_array.append(arr.pop(smallest_index))
+        new_array.append(arr.pop(smallest_index))   #弹出这个元素
     return new_array
 
 #li = [10*random.random() for i in range(10)]
