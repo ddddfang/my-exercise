@@ -1,0 +1,62 @@
+#ifndef __SHELL_H
+#define __SHELL_H
+
+//#define KEY_UP              "\x1b\x5b\x41"  /* [up] key: 0x1b 0x5b 0x41 */
+//#define KEY_DOWN            "\x1b\x5b\x42"  /* [down] key: 0x1b 0x5b 0x42 */
+//#define KEY_RIGHT           "\x1b\x5b\x43"  /* [right] key: 0x1b 0x5b 0x43 */
+//#define KEY_LEFT            "\x1b\x5b\x44"  /* [left] key: 0x1b 0x5b 0x44 */
+//#define KEY_ENTER           '\r'            /* [enter] key */
+//#define KEY_BACKSPACE       '\b'            /* [backspace] key */
+
+#define DEBUG_PRINT printf
+
+typedef enum
+{
+    CLI_OK,
+    CLI_CMD_NOT_FOUND,
+    CLI_INVALID_ARGS,
+    CLI_EXE_ERROR
+} cli_status_t;
+
+typedef cli_status_t (*cmd_func_ptr_t)(int argc, char *argv[]);
+
+//一条内建命令
+typedef struct
+{
+    char *cmd;
+    cmd_func_ptr_t func;
+} cmd_t;
+
+
+#define COMMAND_BUF_SIZE 2048
+#define ARG_MAX_COUNT    10
+#define HISTORY_MAXITEMS 50
+
+//命令记录
+typedef struct {
+	int cmd_idx;
+	char cmd_buf[HISTORY_MAXITEMS][COMMAND_BUF_SIZE];
+} cmd_records_t;
+
+//一条命令记录(parse过的)
+//关于为什么要argv/args, https://bbs.csdn.net/topics/391014879
+typedef struct {
+	int argc;
+	char *argv[ARG_MAX_COUNT];
+	char args[ARG_MAX_COUNT][COMMAND_BUF_SIZE];
+} cmd_parsed_t;
+
+
+char *status_to_str(cli_status_t st);
+int shell_printf(const char *restrict format, ...);
+int read_input(char *input);
+int parse_command(char *input, cmd_parsed_t *output);
+int match_cmd(char *a, char *b);
+cli_status_t execute_command(cmd_parsed_t *cmd);
+
+extern int shell_should_exit;
+extern cmd_t cmd_tbl[];
+extern int cmd_tbl_items;
+extern cmd_records_t cmd_records;
+
+#endif
