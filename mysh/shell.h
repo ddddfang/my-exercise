@@ -1,14 +1,7 @@
 #ifndef __SHELL_H
 #define __SHELL_H
 
-//#define KEY_UP              "\x1b\x5b\x41"  /* [up] key: 0x1b 0x5b 0x41 */
-//#define KEY_DOWN            "\x1b\x5b\x42"  /* [down] key: 0x1b 0x5b 0x42 */
-//#define KEY_RIGHT           "\x1b\x5b\x43"  /* [right] key: 0x1b 0x5b 0x43 */
-//#define KEY_LEFT            "\x1b\x5b\x44"  /* [left] key: 0x1b 0x5b 0x44 */
-//#define KEY_ENTER           '\r'            /* [enter] key */
-//#define KEY_BACKSPACE       '\b'            /* [backspace] key */
 
-#define DEBUG_PRINT printf
 
 typedef enum
 {
