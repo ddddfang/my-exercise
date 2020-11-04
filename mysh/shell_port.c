@@ -4,8 +4,28 @@
 //-----------------------------------------------------------------------
 #include <stdio.h>
 #include <stdarg.h>
-#include <string.h>
 #include <termio.h>
+#include <string.h> //memcpy
+
+int sh_strlen(char *str)
+{
+    int i = 0;
+    while(*str++ != '\0')
+        i++;
+    return i;
+}
+
+int sh_memset(void *p, int val, int size)
+{
+    memset(p, val, size);
+    return 0;
+}
+
+int sh_memcpy(void *dst, void *src, int size)
+{
+    memcpy(dst, src, size);
+    return 0;
+}
 
 //关于立即接收, https://www.cnblogs.com/life2refuel/p/5720043.html
 //linux下的getchar默认是做了处理的,这里直接使用raw方式,应该就是嵌入式环境下的
@@ -50,27 +70,27 @@ int shell_printf(const char *restrict format, ...)
 
 cli_status_t help_func(int argc, char *argv[]) {
     int i = 0;
-    //shell_printf("help_func execute, args are:\n");
+    //shell_printf("help_func execute, args are:\r\n");
     //for (i = 0; i < argc; i++) {
-    //    shell_printf("arg%d: %s\n", i, argv[i]);
+    //    shell_printf("arg%d: %s\r\n", i, argv[i]);
     //}
     if (argc != 2) {
-        shell_printf("usage: help <cmd-name>\n");
+        shell_printf("usage: help <cmd-name>\r\n");
         shell_printf("<cmd-name> can be: ");
         for (i = 0; i < cmd_tbl_items; i++) {
             shell_printf("%s ", cmd_tbl[i].cmd);
         }
-        shell_printf("\n");
+        shell_printf("\r\n");
         return CLI_INVALID_ARGS;
     }
     for (i = 0; i < cmd_tbl_items; i++) {
         if (match_cmd(cmd_tbl[i].cmd, argv[1])) {
-            shell_printf("help %s not implement yet\n", argv[1]);
+            shell_printf("help %s not implement yet\r\n", argv[1]);
             break;
         }
     }
     if (i == cmd_tbl_items) {
-        shell_printf("error! not match any cmd.\n");
+        shell_printf("error! not match any cmd.\r\n");
         return CLI_INVALID_ARGS;
     }
     return CLI_OK;
@@ -78,16 +98,16 @@ cli_status_t help_func(int argc, char *argv[]) {
 
 cli_status_t echo_func(int argc, char *argv[]) {
     int i = 0;
-    shell_printf("echo_func execute, args are:\n");
+    shell_printf("echo_func execute, args are:\r\n");
     for (i = 0; i < argc; i++) {
-        shell_printf("arg%d: %s\n", i, argv[i]);
+        shell_printf("arg%d: %s\r\n", i, argv[i]);
     }
     if (argc != 2) {
-        shell_printf("usage: echo <cmd-name>\n");
+        shell_printf("usage: echo <cmd-name>\r\n");
         shell_printf("\n");
         return CLI_INVALID_ARGS;
     }
-    shell_printf("%s\n", argv[1]);
+    shell_printf("%s\r\n", argv[1]);
     return CLI_OK;
 }
 
@@ -115,22 +135,22 @@ cli_status_t history_func(int argc, char *argv[]) {
     //}
     int cmd_idx = 0;
     if (argc != 2) {
-        shell_printf("usage: history <cmd-name>\n");
+        shell_printf("usage: history <cmd-name>\r\n");
         shell_printf("<cmd-name> can be: show clear <selected-history-cmd>");
-        shell_printf("\n");
+        shell_printf("\r\n");
         return CLI_INVALID_ARGS;
     }
     if (match_cmd("show", argv[1])) {
         for(i = 1; i <= cmd_records.level; i++) {
             cmd_idx = (cmd_records.cmd_idx - i) % HISTORY_MAXITEMS; //计算在数组的真实index
-            shell_printf("%d: %s\n", cmd_idx, cmd_records.cmd_buf[cmd_idx]);
+            shell_printf("%d: %s\r\n", cmd_idx, cmd_records.cmd_buf[cmd_idx]);
         }
     } else if (match_cmd("clear", argv[1])) {
         cmd_records.level = 0;
     } else {
         v = string_to_int(argv[1]);
         if (v >= 0) {
-            shell_printf("%s\n", cmd_records.cmd_buf[v]);
+            shell_printf("%s\r\n", cmd_records.cmd_buf[v]);
         }
     }
 
@@ -138,7 +158,7 @@ cli_status_t history_func(int argc, char *argv[]) {
 }
 
 cli_status_t exit_func(int argc, char *argv[]) {
-    shell_printf("Bye.\n");
+    shell_printf("Bye.\r\n");
     shell_should_exit = 1;
     return CLI_OK;
 }

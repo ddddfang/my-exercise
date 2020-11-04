@@ -1,7 +1,6 @@
 #include "shell.h"
 #include "shell_port.h"
 
-#include <string.h> //memcpy
 
 //ascii
 // [up] key: 0x1b 0x5b 0x41
@@ -59,15 +58,8 @@ char *status_to_str(cli_status_t st)
     return "";
 }
 
-int sh_strlen(char *str) {
-    int i = 0;
-    while(*str++ != '\0')
-        i++;
-    return i;
-}
-
 int auto_complete(char *input, int *idx) {
-    DEBUG_PRINT("warning! auto_complete not implement yet,(%s),idx is %d\n", input, *idx);
+    DEBUG_PRINT("warning! auto_complete not implement yet,(%s),idx is %d\r\n", input, *idx);
     return 0;
 }
 
@@ -145,9 +137,9 @@ static int history_process(int offset, char *buf, int *pi, char *exbuf, int *pie
         shell_putchar('\b');
     }
 
-    memset(exbuf, 0, COMMAND_BUF_SIZE);
+    sh_memset(exbuf, 0, COMMAND_BUF_SIZE);
     *piex = COMMAND_BUF_SIZE - 2;  //最后一个留给'\0'
-    memcpy(buf, cmd_records.cmd_buf[cmd_idx], COMMAND_BUF_SIZE);
+    sh_memcpy(buf, cmd_records.cmd_buf[cmd_idx], COMMAND_BUF_SIZE);
     *pi = sh_strlen(buf);
 
     //把历史记录里的命令刷出来
@@ -164,7 +156,9 @@ int read_input(char *input)
     char c;
 
     //当按下左右按键的时候,起始是光标移动到指定位置并插入
-    char expand_buf[COMMAND_BUF_SIZE] = {0};
+    //char expand_buf[COMMAND_BUF_SIZE] = {0};    //这会隐式调用memset
+    char expand_buf[COMMAND_BUF_SIZE];
+    sh_memset(expand_buf, 0, COMMAND_BUF_SIZE);
     int ie = COMMAND_BUF_SIZE - 2;  //最后一个留给'\0'
 
     int offset = 0;    //0表示当前,-1表示上一个,-2表示前两个...
@@ -319,43 +313,47 @@ cli_status_t execute_command(cmd_parsed_t *cmd)
     return CLI_CMD_NOT_FOUND;
 }
 
-int main() {
+int shell_execute() {
     int input_key_code = 0;
     cmd_tbl_items = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
-    char cur_cmd_buf[COMMAND_BUF_SIZE] = {0};
+    //char cur_cmd_buf[COMMAND_BUF_SIZE] = {0};
+    char cur_cmd_buf[COMMAND_BUF_SIZE];
+    sh_memset(cur_cmd_buf, 0, COMMAND_BUF_SIZE);
     cli_status_t rc = CLI_OK;
 
     while (shell_should_exit == 0) {
         shell_printf(">>");
         input_key_code = read_input(cur_cmd_buf);
         if (input_key_code < 0) {
-            DEBUG_PRINT("error! read_input error\n");
+            DEBUG_PRINT("error! read_input error\r\n");
             continue;
         } else if (input_key_code > 0) {
-            DEBUG_PRINT("read input_key_code %d\n", input_key_code);
+            DEBUG_PRINT("read input_key_code %d\r\n", input_key_code);
             return -1;
         }
 
         ////DEBUG
-        //DEBUG_PRINT("cur_cmd_buf %s\n", cur_cmd_buf);
+        //DEBUG_PRINT("cur_cmd_buf %s\r\n", cur_cmd_buf);
 
         if (sh_strlen(cur_cmd_buf) > 0 && !is_blank(cur_cmd_buf)) {
-            cmd_parsed_t cmd_parsed = {0};
+            //cmd_parsed_t cmd_parsed = {0};
+            cmd_parsed_t cmd_parsed;
+            sh_memset(&cmd_parsed, 0, sizeof(cmd_parsed));
 
             if (parse_command(cur_cmd_buf, &cmd_parsed) != 0) {
-                DEBUG_PRINT("error! parse_command error\n");
+                DEBUG_PRINT("error! parse_command error\r\n");
                 continue;
             }
 
             ////DEBUG
             //for (int t = 0; t < cmd_parsed.argc; t++) {
-            //    DEBUG_PRINT("argv%d:%s\n",t,cmd_parsed.argv[t]);
+            //    DEBUG_PRINT("argv%d:%s\r\n",t,cmd_parsed.argv[t]);
             //}
             ////DEBUG
 
             if (!match_cmd("history", cmd_parsed.argv[0])) {
                 //add to history
-                memcpy(cmd_records.cmd_buf[cmd_records.cmd_idx], cur_cmd_buf, sizeof(cur_cmd_buf));
+                sh_memcpy(cmd_records.cmd_buf[cmd_records.cmd_idx], cur_cmd_buf, sizeof(cur_cmd_buf));
                 cmd_records.cmd_idx = (cmd_records.cmd_idx + 1) % HISTORY_MAXITEMS;
                 if (cmd_records.level < HISTORY_MAXITEMS) {
                     cmd_records.level++;
@@ -363,10 +361,14 @@ int main() {
             }
 
             if ((rc = execute_command(&cmd_parsed)) != CLI_OK) {
-                shell_printf("%s\n", status_to_str(rc));
+                shell_printf("%s\r\n", status_to_str(rc));
             }
         }
     }
     return 0;
+}
+
+int main() {
+    return shell_execute();
 }
 

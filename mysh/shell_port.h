@@ -3,6 +3,10 @@
 #define __SHELL_PORT_H
 
 
+int sh_strlen(char *str);
+int sh_memset(void *p, int val, int size);
+int sh_memcpy(void *dst, void *src, int size);
+
 int shell_getch(void);
 int shell_putchar(char ch);
 int shell_printf(const char *restrict format, ...);
