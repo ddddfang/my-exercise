@@ -8,6 +8,7 @@ int shell_putchar(char ch);
 int shell_printf(const char *restrict format, ...);
 
 cli_status_t help_func(int argc, char *argv[]);
+cli_status_t echo_func(int argc, char *argv[]);
 cli_status_t history_func(int argc, char *argv[]);
 cli_status_t exit_func(int argc, char *argv[]);
 

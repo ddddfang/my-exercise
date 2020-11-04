@@ -27,8 +27,9 @@ typedef struct
 
 //命令记录
 typedef struct {
-	int cmd_idx;
-	char cmd_buf[HISTORY_MAXITEMS][COMMAND_BUF_SIZE];
+    int cmd_idx;
+    int level;
+    char cmd_buf[HISTORY_MAXITEMS][COMMAND_BUF_SIZE];
 } cmd_records_t;
 
 //一条命令记录(parse过的)

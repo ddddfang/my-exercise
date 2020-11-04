@@ -76,12 +76,64 @@ cli_status_t help_func(int argc, char *argv[]) {
     return CLI_OK;
 }
 
-cli_status_t history_func(int argc, char *argv[]) {
+cli_status_t echo_func(int argc, char *argv[]) {
     int i = 0;
-    shell_printf("history_func execute, args are:\n");
+    shell_printf("echo_func execute, args are:\n");
     for (i = 0; i < argc; i++) {
         shell_printf("arg%d: %s\n", i, argv[i]);
     }
+    if (argc != 2) {
+        shell_printf("usage: echo <cmd-name>\n");
+        shell_printf("\n");
+        return CLI_INVALID_ARGS;
+    }
+    shell_printf("%s\n", argv[1]);
+    return CLI_OK;
+}
+
+//不支持负数
+static int string_to_int(char *str) {
+    char *a = str;
+    int res = 0;
+    while (*a) {
+        if (*a > '0' && *a < '9') {
+            res = res * 10 + (*a - '0');
+        } else {
+            return -1;
+        }
+        a++;
+    }
+    return res;
+}
+
+cli_status_t history_func(int argc, char *argv[]) {
+    int i = 0;
+    int v = -1;
+    //shell_printf("history_func execute, args are:\n");
+    //for (i = 0; i < argc; i++) {
+    //    shell_printf("arg%d: %s\n", i, argv[i]);
+    //}
+    int cmd_idx = 0;
+    if (argc != 2) {
+        shell_printf("usage: history <cmd-name>\n");
+        shell_printf("<cmd-name> can be: show clear <selected-history-cmd>");
+        shell_printf("\n");
+        return CLI_INVALID_ARGS;
+    }
+    if (match_cmd("show", argv[1])) {
+        for(i = 1; i <= cmd_records.level; i++) {
+            cmd_idx = (cmd_records.cmd_idx - i) % HISTORY_MAXITEMS; //计算在数组的真实index
+            shell_printf("%d: %s\n", cmd_idx, cmd_records.cmd_buf[cmd_idx]);
+        }
+    } else if (match_cmd("clear", argv[1])) {
+        cmd_records.level = 0;
+    } else {
+        v = string_to_int(argv[1]);
+        if (v >= 0) {
+            shell_printf("%s\n", cmd_records.cmd_buf[v]);
+        }
+    }
+
     return CLI_OK;
 }
 

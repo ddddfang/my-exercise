@@ -27,6 +27,10 @@ cmd_t cmd_tbl[] = {
         .func = help_func
     },
     {
+        .cmd = "echo",
+        .func = echo_func
+    },
+    {
         .cmd = "history",
         .func = history_func
     },
@@ -67,6 +71,46 @@ int auto_complete(char *input, int *idx) {
     return 0;
 }
 
+int history_process(int history, char *input, int *idx, char *expand_buf, int *idx_ex) {
+    DEBUG_PRINT("\nhistory %d, input %s, idx %d,     %d,expand_buf %s\n", history, input, *idx, *idx_ex, &expand_buf[*idx_ex]);
+    int cmd_idx = (cmd_records.cmd_idx + history) % HISTORY_MAXITEMS;
+    DEBUG_PRINT("target:%s\n", cmd_records.cmd_buf[cmd_idx]);
+    //int cmd_idx = 0;
+    //int i = 0;
+    //if (history < 0 && (-history) < cmd_records.level) {
+    //    //先移动到行的开始
+    //    for (i = 0; i < *idx; i++) {
+    //        shell_putchar('\b');
+    //    }
+    //    //刷掉目前行中显示的东西
+    //    for (i = 0; i < *idx; i++) {
+    //        shell_putchar(' ');
+    //    }
+    //    for (i = *idx_ex+1; expand_buf[i] > 0; i++) {
+    //        shell_putchar(' ');
+    //    }
+    //    memset(input, 0, COMMAND_BUF_SIZE);
+    //    memset(expand_buf, 0, COMMAND_BUF_SIZE);
+    //    *idx = 0;
+    //    *idx_ex = 0;
+    //    cmd_idx = (cmd_records.cmd_idx + history) % HISTORY_MAXITEMS;
+    //    memcpy(input, cmd_records.cmd_buf[cmd_idx], COMMAND_BUF_SIZE);
+    //    *idx = sh_strlen(input);
+    //    //再回到行的开始
+    //    for (i = 0; i < *idx; i++) {
+    //        shell_putchar('\b');
+    //    }
+    //    for (i = *idx_ex+1; expand_buf[i] > 0; i++) {
+    //        shell_putchar('\b');
+    //    }
+    //    //把历史记录里的命令刷出来
+    //    for (i = 0; i < *idx; i++) {
+    //        shell_putchar(input[i]);
+    //    }
+    //}
+    return 0;
+}
+
 int read_input(char *input)
 {
     int i = 0;
@@ -75,6 +119,7 @@ int read_input(char *input)
     //当按下左右按键的时候,起始是光标移动到指定位置并插入
     char expand_buf[COMMAND_BUF_SIZE] = {0};
     int ie = COMMAND_BUF_SIZE - 2;  //最后一个留给'\0'
+    int history = 0;    //0表示当前,-1表示上一个,-2表示前两个...
 
     while (1) {
         c = shell_getch();
@@ -90,10 +135,10 @@ int read_input(char *input)
                 shell_putchar('\b');
                 if (expand_buf[ie+1] > 0) {
                     for (ii = ie+1; expand_buf[ii] > 0; ii++)
-                    shell_putchar(expand_buf[ii]);
+                        shell_putchar(expand_buf[ii]);
                     shell_putchar(' ');
                     for (ii = ie+1; expand_buf[ii] > 0; ii++)
-                    shell_putchar('\b');
+                        shell_putchar('\b');
                     shell_putchar('\b');
                 } else {
                     shell_putchar(' ');
@@ -109,13 +154,24 @@ int read_input(char *input)
                 c = shell_getch();
                 switch(c){
                     case KEY_UP:
-                        DEBUG_PRINT("up key pressed\n");
+                        //DEBUG_PRINT("up key pressed\n");
+                        //当按下up/down按键,本次输入就算作废了
+                        history--;
+                        if (-history > cmd_records.level) {
+                            history = -cmd_records.level;
+                        }
+                        history_process(history, input, &i, expand_buf, &ie);
                         break;
                     case KEY_DOWN:
-                        DEBUG_PRINT("down key pressed\n");
+                        //DEBUG_PRINT("down key pressed\n");
+                        //当按下up/down按键,本次输入就算作废了
+                        history++;
+                        if (history >= -1) {
+                            history = -1;
+                        }
+                        history_process(history, input, &i, expand_buf, &ie);
                         break;
                     case KEY_LEFT:
-                        //DEBUG_PRINT("left key pressed\n");
                         if (i > 0) {
                             shell_putchar('\b');
                             i--;
@@ -124,7 +180,6 @@ int read_input(char *input)
                         }
                         break;
                     case KEY_RIGHT:
-                        //DEBUG_PRINT("right key pressed\n");
                         if (expand_buf[ie+1] > 0) {
                             shell_putchar(expand_buf[ie+1]);   //putchar就是光标右移了,只不过这个char不能随便打印
                             input[i] = expand_buf[ie+1];
@@ -171,7 +226,7 @@ int is_blank(char *input)
 
     for (i = 0; i < n; i++) {
         if (input[i] != ' ')
-        return 0;
+            return 0;
     }
     return 1;
 }
@@ -181,8 +236,9 @@ int parse_command(char *input, cmd_parsed_t *output)
     int n = (int) sh_strlen(input);
     int i, oi = 0;
     output->argc = 0;
+    char flag = 0;  //echo "hello fang" 这种case,parse会得到argc=3
     for (i = 0; i < n; i++) {
-        if (input[i] != ' ' && input[i] != '\t') {
+        if (input[i] != ' ' || flag == 1) { //flag=1: 我们正处于一个""中
             if (oi >= COMMAND_BUF_SIZE) {
                 DEBUG_PRINT("error: args too long!\n");
                 return -1;
@@ -191,8 +247,14 @@ int parse_command(char *input, cmd_parsed_t *output)
                 DEBUG_PRINT("error: too many args !\n");
                 return -1;
             }
+            if (input[i] == '\"') {
+                if (flag == 0)
+                    flag = 1;
+                else
+                    flag = 0;
+            }
             output->args[output->argc][oi++] = input[i];
-            if (i == n-1) {
+            if (i == n-1) { //到了末尾不管是不是空格都要完成
                 output->args[output->argc][oi] = '\0';
                 output->argc++;
             }
@@ -220,7 +282,7 @@ int match_cmd(char *a, char *b)
     }
     for (i = 0; i < n; i++) {
         if (a[i] != b[i])
-        return 0;
+            return 0;
     }
     return 1;
 }
@@ -256,6 +318,9 @@ int main() {
             return -1;
         }
 
+        ////DEBUG
+        //DEBUG_PRINT("cur_cmd_buf %s\n", cur_cmd_buf);
+
         if (sh_strlen(cur_cmd_buf) > 0 && !is_blank(cur_cmd_buf)) {
             cmd_parsed_t cmd_parsed = {0};
 
@@ -264,9 +329,20 @@ int main() {
                 continue;
             }
 
-            //add to history
-            memcpy(cmd_records.cmd_buf[cmd_records.cmd_idx], cur_cmd_buf, sizeof(cur_cmd_buf));
-            cmd_records.cmd_idx = (cmd_records.cmd_idx + 1) % HISTORY_MAXITEMS;
+            ////DEBUG
+            //for (int t = 0; t < cmd_parsed.argc; t++) {
+            //    DEBUG_PRINT("argv%d:%s\n",t,cmd_parsed.argv[t]);
+            //}
+            ////DEBUG
+
+            if (!match_cmd("history", cmd_parsed.argv[0])) {
+                //add to history
+                memcpy(cmd_records.cmd_buf[cmd_records.cmd_idx], cur_cmd_buf, sizeof(cur_cmd_buf));
+                cmd_records.cmd_idx = (cmd_records.cmd_idx + 1) % HISTORY_MAXITEMS;
+                if (cmd_records.level < HISTORY_MAXITEMS) {
+                    cmd_records.level++;
+                }
+            }
 
             if ((rc = execute_command(&cmd_parsed)) != CLI_OK) {
                 shell_printf("%s\n", status_to_str(rc));
