@@ -71,43 +71,89 @@ int auto_complete(char *input, int *idx) {
     return 0;
 }
 
-int history_process(int history, char *input, int *idx, char *expand_buf, int *idx_ex) {
-    DEBUG_PRINT("\nhistory %d, input %s, idx %d,     %d,expand_buf %s\n", history, input, *idx, *idx_ex, &expand_buf[*idx_ex]);
-    int cmd_idx = (cmd_records.cmd_idx + history) % HISTORY_MAXITEMS;
-    DEBUG_PRINT("target:%s\n", cmd_records.cmd_buf[cmd_idx]);
-    //int cmd_idx = 0;
-    //int i = 0;
-    //if (history < 0 && (-history) < cmd_records.level) {
-    //    //先移动到行的开始
-    //    for (i = 0; i < *idx; i++) {
-    //        shell_putchar('\b');
-    //    }
-    //    //刷掉目前行中显示的东西
-    //    for (i = 0; i < *idx; i++) {
-    //        shell_putchar(' ');
-    //    }
-    //    for (i = *idx_ex+1; expand_buf[i] > 0; i++) {
-    //        shell_putchar(' ');
-    //    }
-    //    memset(input, 0, COMMAND_BUF_SIZE);
-    //    memset(expand_buf, 0, COMMAND_BUF_SIZE);
-    //    *idx = 0;
-    //    *idx_ex = 0;
-    //    cmd_idx = (cmd_records.cmd_idx + history) % HISTORY_MAXITEMS;
-    //    memcpy(input, cmd_records.cmd_buf[cmd_idx], COMMAND_BUF_SIZE);
-    //    *idx = sh_strlen(input);
-    //    //再回到行的开始
-    //    for (i = 0; i < *idx; i++) {
-    //        shell_putchar('\b');
-    //    }
-    //    for (i = *idx_ex+1; expand_buf[i] > 0; i++) {
-    //        shell_putchar('\b');
-    //    }
-    //    //把历史记录里的命令刷出来
-    //    for (i = 0; i < *idx; i++) {
-    //        shell_putchar(input[i]);
-    //    }
-    //}
+static int key_backspace_process(char *buf, int *pi, char *exbuf, int *piex)
+{
+    int ii = 0;
+    if (*pi > 0) {
+        shell_putchar('\b');
+        if (exbuf[*piex+1] > 0) {
+            //exbuf 中的内容跟进
+            for (ii = *piex + 1; exbuf[ii] > 0; ii++)
+                shell_putchar(exbuf[ii]);
+            shell_putchar(' ');
+            //完成后回到光标原先的位置
+            for (ii = *piex + 1; exbuf[ii] > 0; ii++)
+                shell_putchar('\b');
+            shell_putchar('\b');
+        } else {
+            shell_putchar(' ');
+            shell_putchar('\b');
+        }
+        buf[(*pi)] = '\0';
+        (*pi) = (*pi) - 1;
+    }
+    return 0;
+}
+
+static int key_left_process(char *buf, int *pi, char *exbuf, int *piex)
+{
+    if (*pi > 0) {
+        shell_putchar('\b');
+
+        (*pi) = (*pi) - 1;
+        exbuf[(*piex)] = buf[(*pi)];
+        (*piex) = (*piex) - 1;
+
+        buf[(*pi)] = '\0';
+    }
+    return 0;
+}
+
+static int key_right_process(char *buf, int *pi, char *exbuf, int *piex)
+{
+    if (exbuf[(*piex) + 1] > 0) {
+        shell_putchar(exbuf[(*piex) + 1]);   //putchar就是光标右移了,只不过这个char不能随便打印
+        buf[(*pi)] = exbuf[(*piex) + 1];
+        exbuf[(*piex) + 1] = '\0';
+
+        (*pi) = (*pi) + 1;
+        (*piex) = (*piex) + 1;
+    }
+    return 0;
+}
+
+static int history_process(int offset, char *buf, int *pi, char *exbuf, int *piex) {
+    int cmd_idx = (cmd_records.cmd_idx + offset) % HISTORY_MAXITEMS;
+    int i = 0;
+
+    //先移动到行的开始
+    for (i = 0; i < (*pi); i++) {
+        shell_putchar('\b');
+    }
+    //刷掉目前行中显示的东西
+    for (i = 0; i < (*pi); i++) {
+        shell_putchar(' ');
+    }
+    for (i = (*piex) + 1; exbuf[i] > 0; i++) {
+        shell_putchar(' ');
+    }
+    //再回到行的开始
+    for (i = 0; i < (*pi); i++) {
+        shell_putchar('\b');
+    }
+    for (i = (*piex) + 1; exbuf[i] > 0; i++) {
+        shell_putchar('\b');
+    }
+
+    memset(exbuf, 0, COMMAND_BUF_SIZE);
+    *piex = COMMAND_BUF_SIZE - 2;  //最后一个留给'\0'
+    memcpy(buf, cmd_records.cmd_buf[cmd_idx], COMMAND_BUF_SIZE);
+    *pi = sh_strlen(buf);
+
+    //把历史记录里的命令刷出来
+    for (i = 0; i < (*pi); i++) {
+        shell_putchar(buf[i]);
+    }
     return 0;
 }
 
@@ -116,10 +162,12 @@ int read_input(char *input)
     int i = 0;
     int ii = 0;
     char c;
+
     //当按下左右按键的时候,起始是光标移动到指定位置并插入
     char expand_buf[COMMAND_BUF_SIZE] = {0};
     int ie = COMMAND_BUF_SIZE - 2;  //最后一个留给'\0'
-    int history = 0;    //0表示当前,-1表示上一个,-2表示前两个...
+
+    int offset = 0;    //0表示当前,-1表示上一个,-2表示前两个...
 
     while (1) {
         c = shell_getch();
@@ -131,21 +179,7 @@ int read_input(char *input)
             break;
         }
         if (c == KEY_BACKSPACE) {
-            if (i > 0) {
-                shell_putchar('\b');
-                if (expand_buf[ie+1] > 0) {
-                    for (ii = ie+1; expand_buf[ii] > 0; ii++)
-                        shell_putchar(expand_buf[ii]);
-                    shell_putchar(' ');
-                    for (ii = ie+1; expand_buf[ii] > 0; ii++)
-                        shell_putchar('\b');
-                    shell_putchar('\b');
-                } else {
-                    shell_putchar(' ');
-                    shell_putchar('\b');
-                }
-                i--;
-            }
+            key_backspace_process(input, &i, expand_buf, &ie);
             continue;
         }
         if (c == 0x1b) {
@@ -153,66 +187,50 @@ int read_input(char *input)
             if (c == 0x5b) {
                 c = shell_getch();
                 switch(c){
-                    case KEY_UP:
-                        //DEBUG_PRINT("up key pressed\n");
-                        //当按下up/down按键,本次输入就算作废了
-                        history--;
-                        if (-history > cmd_records.level) {
-                            history = -cmd_records.level;
+                    case KEY_UP:    //当按下up/down按键,本次输入就算作废了
+                        offset--;
+                        if (-offset > cmd_records.level) {
+                            offset = -cmd_records.level;
                         }
-                        history_process(history, input, &i, expand_buf, &ie);
+                        history_process(offset, input, &i, expand_buf, &ie);
                         break;
                     case KEY_DOWN:
-                        //DEBUG_PRINT("down key pressed\n");
-                        //当按下up/down按键,本次输入就算作废了
-                        history++;
-                        if (history >= -1) {
-                            history = -1;
+                        offset++;
+                        if (offset >= -1) {
+                            offset = -1;
                         }
-                        history_process(history, input, &i, expand_buf, &ie);
+                        history_process(offset, input, &i, expand_buf, &ie);
                         break;
                     case KEY_LEFT:
-                        if (i > 0) {
-                            shell_putchar('\b');
-                            i--;
-                            expand_buf[ie] = input[i];
-                            ie--;
-                        }
+                        key_left_process(input, &i, expand_buf, &ie);
                         break;
                     case KEY_RIGHT:
-                        if (expand_buf[ie+1] > 0) {
-                            shell_putchar(expand_buf[ie+1]);   //putchar就是光标右移了,只不过这个char不能随便打印
-                            input[i] = expand_buf[ie+1];
-                            expand_buf[ie+1] = '\0';
-                            i++;
-                            ie++;
-                        }
+                        key_right_process(input, &i, expand_buf, &ie);
                         break;
                 }
             }
             continue;
         }
         if (c == '\t') {
-            //DEBUG_PRINT("info! tab pressed!\n");
             input[i++] = '\0';  //让auto_complete()继续填充
             auto_complete(input, &i);
             continue;
         }
-        /* allocate more memory for input */
         if (i >= COMMAND_BUF_SIZE) {
             DEBUG_PRINT("error! input exceed COMMAND_BUF_SIZE(%d)\n", COMMAND_BUF_SIZE);
             return -1;
         }
         shell_putchar(c);
+        input[i++] = c;
         //可能我们的光标并不在最末尾(因为前面可能已经按了左右移动光标的按键了)
         //这里需要将后面的也打印出来,且完成后光标还回到当前这里
-        for (ii = ie+1; expand_buf[ii] > 0; ii++)
+        for (ii = ie + 1; expand_buf[ii] > 0; ii++)
             shell_putchar(expand_buf[ii]);
-        for (ii = ie+1; expand_buf[ii] > 0; ii++)
+        for (ii = ie + 1; expand_buf[ii] > 0; ii++)
             shell_putchar('\b');
-        input[i++] = c;
     }
-    for (ii = ie+1; expand_buf[ii] > 0; ii++) {
+    //将expand_buf中的内容append到input后再返回
+    for (ii = ie + 1; expand_buf[ii] > 0; ii++) {
         input[i++] = expand_buf[ii];
     }
     input[i] = '\0';
