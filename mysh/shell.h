@@ -49,6 +49,8 @@ int read_input(char *input);
 int parse_command(char *input, cmd_parsed_t *output);
 int match_cmd(char *a, char *b);
 cli_status_t execute_command(cmd_parsed_t *cmd);
+
+int shell_init();
 int shell_execute();
 
 extern int shell_should_exit;

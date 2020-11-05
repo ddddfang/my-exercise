@@ -324,9 +324,16 @@ cli_status_t execute_command(cmd_parsed_t *cmd)
     return CLI_CMD_NOT_FOUND;
 }
 
-int shell_execute() {
-    int input_key_code = 0;
+int shell_init()
+{
     cmd_tbl_items = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
+    shell_printf_init();
+    return 0;
+}
+
+int shell_execute()
+{
+    int input_key_code = 0;
     //char cur_cmd_buf[COMMAND_BUF_SIZE] = {0};
     char cur_cmd_buf[COMMAND_BUF_SIZE];
     sh_memset(cur_cmd_buf, 0, COMMAND_BUF_SIZE);
@@ -383,7 +390,7 @@ int shell_execute() {
 
 int main() {
 
-    shell_printf_init();
+    shell_init();
 
     return shell_execute();
 }
