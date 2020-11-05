@@ -1,11 +1,14 @@
-#include "shell.h"
 
 
 //-----------------------------------------------------------------------
-#include <stdio.h>
-#include <stdarg.h>
-#include <termio.h>
-#include <string.h> //memcpy
+#include <string.h> //memcpy,memset
+#include <stdio.h>  //EOF getchar putchar
+#include <termio.h> //
+//#include <stdarg.h>
+
+#include "shell.h"
+#include "printf.h"
+#include "shell_port.h"
 
 int sh_strlen(char *str)
 {
@@ -57,16 +60,41 @@ int shell_putchar(char ch)
     return 0;
 }
 
-int shell_printf(const char *restrict format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	int ret = vprintf(format, args);
-	va_end(args);
-	return ret;
-}
 
 //-----------------------------------------------------------------------
+
+//我们只用提供 shell_getch 和 shell_putchar 的实现,然后调用 shell_printf_init
+//然后就可以使用 shell_printf 了
+// This function is required by printf function
+void pputc ( void* p, char c) {
+    shell_putchar(c);
+}
+
+int shell_printf_init()
+{
+    init_printf(0, pputc);
+    return 0;
+}
+
+//int shell_printf(const char *restrict format, ...)
+//{
+//	va_list args;
+//	va_start(args, format);
+//	int ret = vprintf(format, args);
+//	va_end(args);
+//	return ret;
+//}
+
+//-----------------------------------------------------------------------
+
+void help_usage() {
+    shell_printf("usage: help <cmd-name>\r\n");
+    shell_printf("<cmd-name> can be: \r\n");
+    int i = 0;
+    for (i = 0; i < cmd_tbl_items; i++) {
+        shell_printf("%d.%s \r\n", i, cmd_tbl[i].cmd);
+    }
+}
 
 cli_status_t help_func(int argc, char *argv[]) {
     int i = 0;
@@ -75,17 +103,13 @@ cli_status_t help_func(int argc, char *argv[]) {
     //    shell_printf("arg%d: %s\r\n", i, argv[i]);
     //}
     if (argc != 2) {
-        shell_printf("usage: help <cmd-name>\r\n");
-        shell_printf("<cmd-name> can be: ");
-        for (i = 0; i < cmd_tbl_items; i++) {
-            shell_printf("%s ", cmd_tbl[i].cmd);
-        }
-        shell_printf("\r\n");
         return CLI_INVALID_ARGS;
     }
     for (i = 0; i < cmd_tbl_items; i++) {
         if (match_cmd(cmd_tbl[i].cmd, argv[1])) {
-            shell_printf("help %s not implement yet\r\n", argv[1]);
+            if (cmd_tbl[i].usage) {   //print usage
+                (*cmd_tbl[i].usage)();
+            }
             break;
         }
     }
@@ -96,15 +120,13 @@ cli_status_t help_func(int argc, char *argv[]) {
     return CLI_OK;
 }
 
+void echo_usage() {
+    shell_printf("usage: echo <string>\r\n");
+    shell_printf("\r\n");
+}
+
 cli_status_t echo_func(int argc, char *argv[]) {
-    int i = 0;
-    shell_printf("echo_func execute, args are:\r\n");
-    for (i = 0; i < argc; i++) {
-        shell_printf("arg%d: %s\r\n", i, argv[i]);
-    }
     if (argc != 2) {
-        shell_printf("usage: echo <cmd-name>\r\n");
-        shell_printf("\n");
         return CLI_INVALID_ARGS;
     }
     shell_printf("%s\r\n", argv[1]);
@@ -126,18 +148,17 @@ static int string_to_int(char *str) {
     return res;
 }
 
+void history_usage() {
+    shell_printf("usage: history <cmd-name>\r\n");
+    shell_printf("<cmd-name> can be: \r\n");
+    shell_printf("1.show\r\n2.clear\r\n3.<selected-history-cmd>\r\n");
+}
+
 cli_status_t history_func(int argc, char *argv[]) {
     int i = 0;
     int v = -1;
-    //shell_printf("history_func execute, args are:\n");
-    //for (i = 0; i < argc; i++) {
-    //    shell_printf("arg%d: %s\n", i, argv[i]);
-    //}
     int cmd_idx = 0;
     if (argc != 2) {
-        shell_printf("usage: history <cmd-name>\r\n");
-        shell_printf("<cmd-name> can be: show clear <selected-history-cmd>");
-        shell_printf("\r\n");
         return CLI_INVALID_ARGS;
     }
     if (match_cmd("show", argv[1])) {
@@ -153,8 +174,11 @@ cli_status_t history_func(int argc, char *argv[]) {
             shell_printf("%s\r\n", cmd_records.cmd_buf[v]);
         }
     }
-
     return CLI_OK;
+}
+
+void exit_usage() {
+    shell_printf("usage: exit shell\r\n");
 }
 
 cli_status_t exit_func(int argc, char *argv[]) {

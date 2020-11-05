@@ -1,0 +1,11 @@
+a simple cli for mcu.
+
+
+         shell
+           |
+     --------------
+     |            |
+  printf          |
+     |            |
+     -------------|
+                shell_port

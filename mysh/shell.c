@@ -23,18 +23,22 @@ int shell_should_exit = 0;
 cmd_t cmd_tbl[] = {
     {
         .cmd = "help",
+        .usage = help_usage,
         .func = help_func
     },
     {
         .cmd = "echo",
+        .usage = echo_usage,
         .func = echo_func
     },
     {
         .cmd = "history",
+        .usage = history_usage,
         .func = history_func
     },
     {
         .cmd = "exit",
+        .usage = exit_usage,
         .func = exit_func
     }
 };
@@ -302,12 +306,19 @@ int match_cmd(char *a, char *b)
 cli_status_t execute_command(cmd_parsed_t *cmd)
 {
     int i = 0;
+    cli_status_t rc = CLI_OK;
     //int len = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
     int len = cmd_tbl_items;
 
     for (i = 0; i < len; i++) {
         if (match_cmd(cmd_tbl[i].cmd, cmd->argv[0])) {
-            return (*cmd_tbl[i].func)(cmd->argc, cmd->argv);
+            if (cmd_tbl[i].func)
+                rc = (*cmd_tbl[i].func)(cmd->argc, cmd->argv);
+                if (rc == CLI_INVALID_ARGS) {   //print usage
+                    if (cmd_tbl[i].usage)
+                        (*cmd_tbl[i].usage)();
+                }
+                return rc;
         }
     }
     return CLI_CMD_NOT_FOUND;
@@ -361,7 +372,9 @@ int shell_execute() {
             }
 
             if ((rc = execute_command(&cmd_parsed)) != CLI_OK) {
-                shell_printf("%s\r\n", status_to_str(rc));
+                shell_printf("---------------------\r\n");
+                shell_printf("error: %s\r\n", status_to_str(rc));
+                shell_printf("---------------------\r\n");
             }
         }
     }
@@ -369,6 +382,9 @@ int shell_execute() {
 }
 
 int main() {
+
+    shell_printf_init();
+
     return shell_execute();
 }
 

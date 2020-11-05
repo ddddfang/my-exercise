@@ -12,11 +12,13 @@ typedef enum
 } cli_status_t;
 
 typedef cli_status_t (*cmd_func_ptr_t)(int argc, char *argv[]);
+typedef void (*cmd_usage_ptr_t)();
 
 //一条内建命令
 typedef struct
 {
     char *cmd;
+    cmd_usage_ptr_t usage;
     cmd_func_ptr_t func;
 } cmd_t;
 
