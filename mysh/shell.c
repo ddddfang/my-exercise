@@ -70,34 +70,64 @@ char *status_to_str(cli_status_t st)
 }
 
 //返回match了几个,他们的index存放在数组idxs中
-static int find_match(char *in, const int *pi, int *idxs)
+static int find_match(char *in, int *idxs)
 {
+    int len = sh_strlen(in);
     int i = 0;
     int t = 0;
     int res = 0;
     for (i = 0; i < shell_keywords.keywords_cnt; i++) {
-        DEBUG_PRINT("%s\r\n", shell_keywords.keywords_buf[i]);
-        for (t = 0; t < *pi; t++) {
+        for (t = 0; t < len; t++) {
             if (in[t] != shell_keywords.keywords_buf[i][t])
                 break;
         }
-        if (t == *pi) {
+        if (t == len) {
             idxs[res++] = i;
         }
     }
-    return 0;
+    return res;
 }
 
 static int auto_complete(char *buf, int *pi)
 {
-    //shell_printf("\033[1A"); //先回到上一行
+    int match_cnt = 0;
+    int i = 0;
+    //shell_printf("\033[1A"); //回到上一行
+
+    //那些匹配的关键字 的 index
     int idxs[MAX_KEY_WORD_CNT];
     sh_memset(idxs, 0, MAX_KEY_WORD_CNT);
 
-    //若匹配有多个候选项,//这里打印备选项
-    shell_printf("\r\n%s\r\n", buf);
+    char tmp[COMMAND_BUF_SIZE];
+    sh_memset(tmp, 0, COMMAND_BUF_SIZE);
 
-    shell_printf(">>%s", buf);
+    for (i = 0; i < (*pi); i++) {
+        tmp[i] = buf[i];
+    }
+
+    match_cnt = find_match(tmp, idxs);
+    if (match_cnt > 1) {
+        //若匹配有多个匹配项,打印他们.
+        shell_printf("\r\n");
+        for (i = 0; i < match_cnt; i++) {
+            //idxs[i] is the index
+            shell_printf("%s  ", shell_keywords.keywords_buf[idxs[i]]);
+        }
+        //打印传进来的字符串,不要修改,等下一次tab 直到 match_cnt 为1
+        shell_printf("\r\n>>%s", tmp);
+    } else if (match_cnt == 1) {
+        //直接修改 buf 和 *pi
+        //shell_printf("%s ", shell_keywords.keywords_buf[idxs[0]]);
+        for (i = (*pi); i < sh_strlen(shell_keywords.keywords_buf[idxs[0]]); i++) {
+            //
+            buf[i] = shell_keywords.keywords_buf[idxs[0]][i];
+            (*pi)++;
+            shell_putchar(shell_keywords.keywords_buf[idxs[0]][i]);
+        }
+        buf[(*pi)] = '\0';
+    } else {
+        //没有找到匹配项那就什么都不要做
+    }
     return 0;
 }
 
@@ -257,7 +287,7 @@ int read_input(char *input)
             continue;
         }
         if (c == '\t') {
-            input[i++] = '\0';  //让auto_complete()继续填充
+            //input[i++] = '\0';  //让auto_complete()继续填充
             auto_complete(input, &i);
             continue;
         }
@@ -381,13 +411,12 @@ int shell_init()
     shell_printf("********************************************************************\r\n");
 
     for (i = 0; i < cmd_tbl_items; i++) {
-        sh_memcpy(shell_keywords.keywords_buf[i], cmd_tbl[i].cmd, sh_strlen(cmd_tbl[i].cmd) + 1);
+        sh_memcpy(shell_keywords.keywords_buf[i], cmd_tbl[i].cmd, sh_strlen(cmd_tbl[i].cmd));
         shell_keywords.keywords_cnt++;
     }
 
     DEBUG_PRINT("all supported keywords are { ");
     for (i = 0; i < shell_keywords.keywords_cnt; i++) {
-        sh_memcpy(shell_keywords.keywords_buf[i], cmd_tbl[i].cmd, sh_strlen(cmd_tbl[i].cmd) + 1);
         DEBUG_PRINT("%s ", shell_keywords.keywords_buf[i]);
     }
     DEBUG_PRINT("}\r\n");
@@ -401,11 +430,12 @@ int shell_execute()
     int input_key_code = 0;
     //char cur_cmd_buf[COMMAND_BUF_SIZE] = {0};
     char cur_cmd_buf[COMMAND_BUF_SIZE];
-    sh_memset(cur_cmd_buf, 0, COMMAND_BUF_SIZE);
     cli_status_t rc = CLI_OK;
 
     while (shell_should_exit == 0) {
         shell_printf(">>");
+
+        sh_memset(cur_cmd_buf, 0, COMMAND_BUF_SIZE);
         input_key_code = read_input(cur_cmd_buf);
         if (input_key_code < 0) {
             DEBUG_PRINT("error! read_input error\r\n");

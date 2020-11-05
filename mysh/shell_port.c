@@ -122,7 +122,6 @@ cli_status_t help_func(int argc, char *argv[]) {
 
 void echo_usage() {
     shell_printf("usage: echo <string>\r\n");
-    shell_printf("\r\n");
 }
 
 cli_status_t echo_func(int argc, char *argv[]) {
