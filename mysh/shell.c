@@ -99,11 +99,19 @@ static int auto_complete(char *buf, int *pi)
     sh_memset(idxs, 0, MAX_KEY_WORD_CNT);
 
     char tmp[COMMAND_BUF_SIZE];
+    int itmp = 0;
+    int blank_pos = -1;
     sh_memset(tmp, 0, COMMAND_BUF_SIZE);
 
     for (i = 0; i < (*pi); i++) {
-        tmp[i] = buf[i];
+        if(buf[i] == ' ') { //如果出现空格,则应该是匹配空格之后的串
+            blank_pos = i;
+            itmp = 0;
+            continue;
+        }
+        tmp[itmp++] = buf[i];
     }
+    tmp[itmp] = '\0';
 
     match_cnt = find_match(tmp, idxs);
     if (match_cnt > 1) {
@@ -114,13 +122,12 @@ static int auto_complete(char *buf, int *pi)
             shell_printf("%s  ", shell_keywords.keywords_buf[idxs[i]]);
         }
         //打印传进来的字符串,不要修改,等下一次tab 直到 match_cnt 为1
-        shell_printf("\r\n>>%s", tmp);
+        shell_printf("\r\n>>%s", buf);  //这里打印tmp的话,带空格的case会只显示空格后的内容,运行还是正常的
     } else if (match_cnt == 1) {
         //直接修改 buf 和 *pi
-        //shell_printf("%s ", shell_keywords.keywords_buf[idxs[0]]);
-        for (i = (*pi); i < sh_strlen(shell_keywords.keywords_buf[idxs[0]]); i++) {
+        for (i = (*pi) - (blank_pos + 1); i < sh_strlen(shell_keywords.keywords_buf[idxs[0]]); i++) {
             //
-            buf[i] = shell_keywords.keywords_buf[idxs[0]][i];
+            buf[(*pi)] = shell_keywords.keywords_buf[idxs[0]][i];
             (*pi)++;
             shell_putchar(shell_keywords.keywords_buf[idxs[0]][i]);
         }
@@ -287,7 +294,7 @@ int read_input(char *input)
             continue;
         }
         if (c == '\t') {
-            //input[i++] = '\0';  //让auto_complete()继续填充
+            input[i] = '\0';  //让auto_complete()继续填充,input[i]值早已经存入exbuf,这里置0
             auto_complete(input, &i);
             continue;
         }
