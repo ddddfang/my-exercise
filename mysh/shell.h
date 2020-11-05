@@ -43,6 +43,17 @@ typedef struct {
 } cmd_parsed_t;
 
 
+//关键字最大长度,用于 auto_complete
+#define MAX_KEY_WORD_SIZE   32
+//最大关键字个数
+#define MAX_KEY_WORD_CNT    1024
+typedef struct {
+    int keywords_cnt;
+    //int top_key_idx[MAX_KEY_WORD_CNT];
+    //int next_key_idx[MAX_KEY_WORD_CNT];
+    char keywords_buf[MAX_KEY_WORD_CNT][MAX_KEY_WORD_SIZE];
+} shell_keywords_t;
+
 char *status_to_str(cli_status_t st);
 int shell_printf(const char *restrict format, ...);
 int read_input(char *input);

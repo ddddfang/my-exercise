@@ -7,10 +7,15 @@
 // [down] key: 0x1b 0x5b 0x42
 // [right] key: 0x1b 0x5b 0x43
 // [left] key: 0x1b 0x5b 0x44
+// [delete] 27 91 51 126 --> 1b 5b 33 7e
+// [ins]    27 91 50 126 --> 1b 5b 32 7e
+// [page u] 27 91 53 126
+// [page d] 27 91 54 126
 #define KEY_UP                  0x41
 #define KEY_DOWN                0x42
 #define KEY_RIGHT               0x43
 #define KEY_LEFT                0x44
+#define KEY_DEL                 0x33
 #define KEY_BACKSPACE           127            /* [backspace] key */
 
 
@@ -45,6 +50,8 @@ cmd_t cmd_tbl[] = {
 int cmd_tbl_items = 0;
 //命令执行记录
 cmd_records_t cmd_records;
+//支持 auto_complete 的关键字
+shell_keywords_t shell_keywords;
 //--------------------------------------------------
 
 char *status_to_str(cli_status_t st)
@@ -62,8 +69,35 @@ char *status_to_str(cli_status_t st)
     return "";
 }
 
-int auto_complete(char *input, int *idx) {
-    DEBUG_PRINT("warning! auto_complete not implement yet,(%s),idx is %d\r\n", input, *idx);
+//返回match了几个,他们的index存放在数组idxs中
+static int find_match(char *in, const int *pi, int *idxs)
+{
+    int i = 0;
+    int t = 0;
+    int res = 0;
+    for (i = 0; i < shell_keywords.keywords_cnt; i++) {
+        DEBUG_PRINT("%s\r\n", shell_keywords.keywords_buf[i]);
+        for (t = 0; t < *pi; t++) {
+            if (in[t] != shell_keywords.keywords_buf[i][t])
+                break;
+        }
+        if (t == *pi) {
+            idxs[res++] = i;
+        }
+    }
+    return 0;
+}
+
+static int auto_complete(char *buf, int *pi)
+{
+    //shell_printf("\033[1A"); //先回到上一行
+    int idxs[MAX_KEY_WORD_CNT];
+    sh_memset(idxs, 0, MAX_KEY_WORD_CNT);
+
+    //若匹配有多个候选项,//这里打印备选项
+    shell_printf("\r\n%s\r\n", buf);
+
+    shell_printf(">>%s", buf);
     return 0;
 }
 
@@ -114,6 +148,15 @@ static int key_right_process(char *buf, int *pi, char *exbuf, int *piex)
 
         (*pi) = (*pi) + 1;
         (*piex) = (*piex) + 1;
+    }
+    return 0;
+}
+
+static int key_del_process(char *buf, int *pi, char *exbuf, int *piex)
+{
+    if (exbuf[(*piex) + 1] > 0) {
+        key_right_process(buf, pi, exbuf, piex);
+        key_backspace_process(buf, pi, exbuf, piex);
     }
     return 0;
 }
@@ -204,6 +247,10 @@ int read_input(char *input)
                         break;
                     case KEY_RIGHT:
                         key_right_process(input, &i, expand_buf, &ie);
+                        break;
+                    case KEY_DEL:
+                        shell_getch();//discard
+                        key_del_process(input, &i, expand_buf, &ie);
                         break;
                 }
             }
@@ -326,8 +373,26 @@ cli_status_t execute_command(cmd_parsed_t *cmd)
 
 int shell_init()
 {
+    int i = 0;
     cmd_tbl_items = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
     shell_printf_init();
+    shell_printf("********************************************************************\r\n");
+    shell_printf("** this is a simple cli, type 'help' to see what cmds is supported.\r\n");
+    shell_printf("********************************************************************\r\n");
+
+    for (i = 0; i < cmd_tbl_items; i++) {
+        sh_memcpy(shell_keywords.keywords_buf[i], cmd_tbl[i].cmd, sh_strlen(cmd_tbl[i].cmd) + 1);
+        shell_keywords.keywords_cnt++;
+    }
+
+    DEBUG_PRINT("all supported keywords are { ");
+    for (i = 0; i < shell_keywords.keywords_cnt; i++) {
+        sh_memcpy(shell_keywords.keywords_buf[i], cmd_tbl[i].cmd, sh_strlen(cmd_tbl[i].cmd) + 1);
+        DEBUG_PRINT("%s ", shell_keywords.keywords_buf[i]);
+    }
+    DEBUG_PRINT("}\r\n");
+
+    shell_printf("\r\n");
     return 0;
 }
 
