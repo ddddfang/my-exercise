@@ -1,0 +1,56 @@
+https://github.com/ryansturmer/thinfat32
+
+
+-------------make-------------------
+dd if=/dev/zero of=test.fat32 count=204800 
+ls -lah test.fat32 
+
+/sbin/mkdosfs test.fat32 -s2 -F32
+chmod a+rw test.fat32
+
+-------------mount-------------------
+mkdir fs
+mount -o loop -tvfat test.fat32 ./fs
+
+
+-------------populate-----------------
+cd fs
+echo "Medium sized filename on this one." > thisisamidsizefilename.txt
+mkdir subdir
+echo "This is file A" > a.txt
+echo "This is file B" > b.txt
+echo "This is a long filename!" > subdir/this\ is\ a\ super\ long\ filename\ with\ spaces.txt
+echo "Hello, World" > subdir/c.txt ;;
+
+
+--------------umount------------------
+sudo umount ./fs
+
+
+
+
+http://blog.chinaunix.net/uid-20657684-id-1588079.html
+
+我使用 sudo dd if=/dev/sdb of=udisk.img
+将u盘内容存储下来, 直接使用 mount -o loop -tvfat udisk.img ./fs
+会提示挂载出错,因为 offset 不对(分区的起始逻辑扇区号并不是从0开始的)
+这需要我们先使用 fdisk -l -u -C 1 udisk.img 查看
+
+##  ~$ fdisk -l -u -C 1  udisk.img
+##  Disk udisk.img: 1.9 GiB, 2002780160 bytes, 3911680 sectors
+##  Units: sectors of 1 * 512 = 512 bytes
+##  Sector size (logical/physical): 512 bytes / 512 bytes
+##  I/O size (minimum/optimal): 512 bytes / 512 bytes
+##  Disklabel type: dos
+##  Disk identifier: 0xcad4ebea
+##  
+##  设备       启动 Start  末尾  扇区  Size Id 类型
+##  udisk.img1       2048 3911679 3909632  1.9G 83 Linux
+
+上面显示起始扇区号是 2048,so, offset=2048*512=1048576
+再次使用 sudo mount -o loop,offset=1048576 -tvfat udisk.img ./fs/
+即可挂载成功
+
+看起来在格式化u盘的时候，若有分区表,eg./dev/sdb1 这种,则第一个扇区应该式mbr,
+应该去里面寻找分区起始扇区号(而不是从0开始)
+
