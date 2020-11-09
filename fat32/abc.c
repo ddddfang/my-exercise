@@ -9,9 +9,29 @@
 #define DATA_WRITE_ERROR -3
 #define DATA_MISMATCH_ERROR -4
 
+int basic_read(char *input_file) {
+    TFFile *fp;
+    char data[1024];
+    fp = tf_fopen(input_file, "r");
+    if (!fp) {
+        printf("open error\r\n");
+        return FILE_OPEN_ERROR;
+    }
+    int i = 0;
+    printf("read result:\r\n");
+
+    memset(data, 0, 1024);
+    while((i = tf_fread(data, 1023, fp)) > 0) {
+        printf("%s\r\n", data);
+        memset(data, 0, 1024);
+    }
+    tf_fclose(fp);
+    return NO_ERROR;
+}
+
 int test_basic_read(char *input_file, char *expected) {
     TFFile *fp;
-    char data[128];
+    char data[20480];
     fp = tf_fopen(input_file, "r");
     int i = 0;
 
@@ -79,41 +99,47 @@ int test_basic_append(char *input_file, char *write_string) {
 int main(int argc, char **argv) {
     int rc;
 
-    printf("\r\nFAT32 Filesystem Test");
+    printf("\r\nFAT32 Filesystem Test\r\n");
     rc = tf_init();
 
     printf("tf_init return %d\r\n", rc);
 
-
-
-    printf("\r\n[TEST] Basic LFN write test ") ;
-    if(rc = test_basic_write("/test_longfilename0.txt", "Hello, World!, this content is written by code.")) {
+    if(rc = basic_read("/subdir/fang.txt")) {// /readers/abc.txt
+    //if(rc = test_basic_read("/subdir/fang.txt", "..")) {// /readers/abc.txt
+    //if(rc = test_basic_read("/readers/abc.txt", "...")) {// /readers/abc.txt
         printf("failed with error code 0x%x", rc) ;
     } else {
         printf(" PASSED.\r\n");
     }
 
-
-    printf("\r\n[TEST] Basic LFN read test ") ;
-    if(rc = test_basic_read("/test_longfilename0.txt", "Hello, World!, this content is written by code.")) {
-        printf("failed with error code 0x%x", rc) ;
-    } else {
-        printf(" PASSED.\r\n");
-    }
-
-
-    if(rc = test_basic_write("/test0.txt", "Hello, World!")) {
-        printf("\r\n[TEST] Basic 8.3 write test failed with error code 0x%x", rc);
-    } else {
-        printf("\r\n[TEST] Basic 8.3 write test PASSED.");
-    }
+    //printf("\r\n[TEST] Basic LFN write test ") ;
+    //if(rc = test_basic_write("/test_longfilename0.txt", "Hello, World!, this content is written by code.")) {
+    //    printf("failed with error code 0x%x", rc) ;
+    //} else {
+    //    printf(" PASSED.\r\n");
+    //}
 
 
-    if(rc = test_basic_read("/test0.txt", "Hello, World!")) {
-        printf("\r\n[TEST] Basic 8.3 read test failed with error code 0x%x", rc) ;
-    } else {
-        printf("\r\n[TEST] Basic 8.3 read test PASSED.");
-    }
+    //printf("\r\n[TEST] Basic LFN read test ") ;
+    //if(rc = test_basic_read("/test_longfilename0.txt", "Hello, World!, this content is written by code.")) {
+    //    printf("failed with error code 0x%x", rc) ;
+    //} else {
+    //    printf(" PASSED.\r\n");
+    //}
+
+
+    //if(rc = test_basic_write("/test0.txt", "Hello, World!")) {
+    //    printf("\r\n[TEST] Basic 8.3 write test failed with error code 0x%x", rc);
+    //} else {
+    //    printf("\r\n[TEST] Basic 8.3 write test PASSED.");
+    //}
+
+
+    //if(rc = test_basic_read("/test0.txt", "Hello, World!")) {
+    //    printf("\r\n[TEST] Basic 8.3 read test failed with error code 0x%x", rc) ;
+    //} else {
+    //    printf("\r\n[TEST] Basic 8.3 read test PASSED.");
+    //}
     return 0;
 }
 
