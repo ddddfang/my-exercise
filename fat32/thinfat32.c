@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include "thinfat32.h"
 
-// USERLAND
 int read_sector(char *data, uint32_t sector) {
     FILE *fp;
     fp = fopen("test.fat32", "r+b");
@@ -15,7 +14,6 @@ int read_sector(char *data, uint32_t sector) {
     return 0;
 }
 
-//int write_sector(uint8_t *data, uint32_t blocknum) {
 int write_sector(char *data, uint32_t blocknum) {
     FILE *fp;
     fp = fopen("test.fat32", "r+");
@@ -27,8 +25,6 @@ int write_sector(char *data, uint32_t blocknum) {
     return 0;
 }
 
-
-//#define TF_DEBUG
 
 TFInfo tf_info;
 TFFile tf_file_handles[TF_FILE_HANDLES];
@@ -78,7 +74,6 @@ int tf_store() {
  * Reads filesystem info from disk into tf_info and checks that info for validity
  * SIDE EFFECTS
  *   Sector 0 is fetched into tf_info.buffer
- *   If TF_DEBUG is specified tf_stats is initialized
  * RETURN
  *   0 for a successfully initialized filesystem, nonzero otherwise.
  */
@@ -91,29 +86,25 @@ int tf_init() {
     tf_info.currentSector = -1;
     tf_info.sectorFlags = 0;
     tf_fetch(0);
-//    if (((unsigned char)tf_info.buffer[510]) == 0x55 &&
-//            ((unsigned char)tf_info.buffer[511]) == 0xaa) {
-//        start_sector = tf_info.buffer[0x1c6] +
-//                (tf_info.buffer[0x1c7] << 8) +
-//                (tf_info.buffer[0x1c8] << 16) +
-//                (tf_info.buffer[0x1c9] << 23);
-//        printf("start_sector %d \r\n", start_sector);
-//        tf_fetch(0);    //once again, fetch 0, but with offset "start_sector"
-//    }
+    //    if (((unsigned char)tf_info.buffer[510]) == 0x55 &&
+    //            ((unsigned char)tf_info.buffer[511]) == 0xaa) {
+    //        start_sector = tf_info.buffer[0x1c6] +
+    //                (tf_info.buffer[0x1c7] << 8) +
+    //                (tf_info.buffer[0x1c8] << 16) +
+    //                (tf_info.buffer[0x1c9] << 23);
+    //        printf("start_sector %d \r\n", start_sector);
+    //        tf_fetch(0);    //once again, fetch 0, but with offset "start_sector"
+    //    }
 
     // Cast to a BPB, so we can extract relevant data
     bpb = (BPB_struct *) tf_info.buffer;
 
-    /* Some sanity checks to make sure we're really dealing with FAT here
-     * see fatgen103.pdf pg. 9ff. for details */
-
-    /* BS_jmpBoot needs to contain specific instructions */
+    // BS_jmpBoot needs to contain specific instructions
     if (!(bpb->BS_JumpBoot[0] == 0xEB && bpb->BS_JumpBoot[2] == 0x90) && !(bpb->BS_JumpBoot[0] == 0xE9)) {
         return TF_ERR_BAD_FS_TYPE;
     }
 
-    /* Only specific bytes per sector values are allowed
-     * FIXME: Only 512 bytes are supported by thinfat at the moment */
+    // Only 512 bytes are supported by thinfat at the moment
     if (bpb->BytesPerSector != 512) {
         return TF_ERR_BAD_FS_TYPE;
     }
@@ -121,15 +112,14 @@ int tf_init() {
         return TF_ERR_BAD_FS_TYPE;
     }
 
-    /* Valid media types */
+    // Valid media types
     if ((bpb->Media != 0xF0) && ((bpb->Media < 0xF8) || (bpb->Media > 0xFF))) {
         return TF_ERR_BAD_FS_TYPE;
     }
 
-    // See the FAT32 SPEC for how this is all computed, fang: for FAT32, <RootEntryCount> field is 0
+    // fang: for FAT32, <RootEntryCount> field is 0
     fat_size = (bpb->FATSize16 != 0) ? bpb->FATSize16 : bpb->FSTypeSpecificData.fat32.FATSize;
-    // The 512 here is a hardcoded bpb->bytesPerSector (TODO: Replace /,* with shifts?)
-    root_dir_sectors = ((bpb->RootEntryCount*32) + (bpb->BytesPerSector-1))/(512); 
+    root_dir_sectors = ((bpb->RootEntryCount * 32) + (bpb->BytesPerSector-1))/(512); 
     tf_info.totalSectors = (bpb->TotalSectors16 != 0) ? bpb->TotalSectors16 : bpb->TotalSectors32;
     data_sectors = tf_info.totalSectors - (bpb->ReservedSectorCount + (bpb->NumFATs * fat_size) + root_dir_sectors);
     tf_info.sectorsPerCluster = bpb->SectorsPerCluster;
@@ -155,9 +145,10 @@ int tf_init() {
         temp += sizeof(FatFileEntry);
         tf_fread((char *)&e, sizeof(FatFileEntry), fp);
     } while(e.msdos.filename[0] != '\x00');
+
     tf_fclose(fp);
     tf_info.rootDirectorySize = temp;
-    
+
     tf_fetch(0);
     printBPB( (BPB_struct*)tf_info.buffer );
 
@@ -214,7 +205,7 @@ int tf_set_fat_entry(uint32_t cluster, uint32_t value) {
  *   The first sector of the provided cluster
  */
 uint32_t tf_first_sector(uint32_t cluster) {
-    return ((cluster-2) * tf_info.sectorsPerCluster) + tf_info.firstDataSector;
+    return ((cluster - 2) * tf_info.sectorsPerCluster) + tf_info.firstDataSector;
 }
 
 /*
@@ -244,13 +235,13 @@ char *tf_walk(char *filename, TFFile *fp) {
         if(*filename == '\x00')
             return NULL;
     }
-    // There's some path left
-    if(*filename != '\x00') {
+
+    if(*filename != '\x00') {   // There's some path left
         // fp is the handle for the current directory
         // filename is the name of the current file in that directory
         // Go fetch the FatFileEntry that corresponds to the current file
         // Remember that tf_find_file is only going to search from the beginning of the filename
-        // up until the first path separation character
+        // up until the first path separation character,(fang: strncasecmp in tf_compare_filename_segment)
         if(tf_find_file(fp, filename)) {
             // This happens when we couldn't actually find the file
             fp->flags = 0xff;
@@ -336,14 +327,12 @@ void tf_choose_sfn(char *dest, char *src, TFFile *fp) {
                 temp[12] = 0;
 
                 if (0 > tf_find_file( &xfile, temp )) {
-                    dbg_printf("\r\n          [DEBUG-tf_choose_sfn] found non-conflicting filename: %s", temp);
-                    return;
+                    return; //found found non-conflicting filename
                 }
-                dbg_printf("trying again with index:", num);
+                //trying again with index: num
                 num++;
                 break;
             case -1: // error
-                dbg_printf("\r\n[DEBUG-tf_choose_sfn] error selecting short filename!");
                 return;
         }
     }
@@ -358,33 +347,26 @@ void tf_choose_sfn(char *dest, char *src, TFFile *fp) {
  * TODO: Modify this to use the basis name generation algorithm described in the FAT32 whitepaper.
  */
 int tf_shorten_filename(char *dest, char *src, uint8_t num) {
-    //int l = strlen(src);
     int i;
     //int lossy_flag = 0;
     char *tmp;
-
-    #ifdef TF_DEBUG
-    char *orig_dest = dest;
-    char *orig_src = src;
-    #endif
-    // strip through and chop special chars
 
     tmp = strrchr(src, '.');
     // copy the extension
     for (i = 0; i < 3; i++) {
         while (tmp != 0 && *tmp != 0 && !(*tmp < 0x7f && *tmp > 20 
-               && *tmp !=0x22
-               && *tmp !=0x2a
-               && *tmp !=0x2e
-               && *tmp !=0x2f
-               && *tmp !=0x3a
-               && *tmp !=0x3c
-               && *tmp !=0x3e
-               && *tmp !=0x3f
-               && *tmp !=0x5b
-               && *tmp !=0x5c
-               && *tmp !=0x5d
-               && *tmp !=0x7c))
+               && *tmp != 0x22
+               && *tmp != 0x2a
+               && *tmp != 0x2e
+               && *tmp != 0x2f
+               && *tmp != 0x3a
+               && *tmp != 0x3c
+               && *tmp != 0x3e
+               && *tmp != 0x3f
+               && *tmp != 0x5b
+               && *tmp != 0x5c
+               && *tmp != 0x5d
+               && *tmp != 0x7c))
             tmp++;
         if (tmp == 0 || *tmp == 0)
             *(dest + 8 + i) = ' ';
@@ -407,18 +389,18 @@ int tf_shorten_filename(char *dest, char *src, uint8_t num) {
             //lossy_flag = 1;
         } else {
             while (*src != 0 && !(*src < 0x7f && *src > 20 
-                   && *src !=0x22
-                   && *src !=0x2a
-                   && *src !=0x2e
-                   && *src !=0x2f
-                   && *src !=0x3a
-                   && *src !=0x3c
-                   && *src !=0x3e
-                   && *src !=0x3f
-                   && *src !=0x5b
-                   && *src !=0x5c
-                   && *src !=0x5d
-                   && *src !=0x7c))
+                   && *src != 0x22
+                   && *src != 0x2a
+                   && *src != 0x2e
+                   && *src != 0x2f
+                   && *src != 0x3a
+                   && *src != 0x3c
+                   && *src != 0x3e
+                   && *src != 0x3f
+                   && *src != 0x5b
+                   && *src != 0x5c
+                   && *src != 0x5d
+                   && *src != 0x7c))
                 src++;
             if (*src == 0)
                 dest[i] = ' ';
@@ -1027,7 +1009,6 @@ int tf_compare_filename_segment(FatFileEntry *entry, char *name) { //, uint8_t l
 //
 int tf_compare_filename(TFFile *fp, char *name) {
     uint32_t i = 0;
-    uint32_t namelen;
     FatFileEntry entry;
     char *compare_name = name;
     uint32_t lfn_entries;
@@ -1044,11 +1025,9 @@ int tf_compare_filename(TFFile *fp, char *name) {
         // If it's a match, seek back an entry to the beginning of it, return 1
         if(1 == tf_compare_filename_segment(&entry, name)) { //, true)) {
             tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
-            tf_printf("\r\n      [DEBUG-tf_compare_filename] 8.3 Exiting... returning 1 (match)");
-            return 1;
+            return 1;   //match
         } else {
-            tf_printf("\r\n      [DEBUG-tf_compare_filename] 8.3 Exiting... returning 0 (doesn't match)");
-            return 0;
+            return 0;   //doesn't match
         }
     } else if ((entry.lfn.sequence_number & 0xc0) == 0x40) {
         //CHECK FOR 0x40 bit set or this is not the first (last) LFN entry!
@@ -1057,12 +1036,6 @@ int tf_compare_filename(TFFile *fp, char *name) {
 
         // Seek to the last entry in the chain (LFN entries store name in reverse, so the last shall be first)
         tf_fseek(fp, (int32_t) sizeof(FatFileEntry) * (lfn_entries - 1), fp->pos);
-
-        // get the length of the file first off.  LFN count should be easily checked from here.
-        namelen = strlen(name);
-        //if (((namelen + 12) / LFN_ENTRY_CAPACITY) != lfn_entries) {
-        //    return 0;
-        //}
 
         for(i = 0; i < lfn_entries; i++) {
             tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
