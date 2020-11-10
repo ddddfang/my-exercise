@@ -167,6 +167,23 @@ int main(int argc, char **argv) {
     } else {
         printf("\r\n[TEST] Basic 8.3 read test PASSED.\r\n");
     }
+
+    tf_mkdir("/home", false);
+    tf_mkdir("/home", false);
+    tf_mkdir("/home", false);
+    tf_mkdir("/dirA/dirB", true);
+    tf_create("/file_ttt0.txt");
+    tf_create("/file_ttt0.txt");
+    tf_create("/file_ttt0.txt");
+
+    char name[256];
+    for (int i = 0; i < 10; i++) {
+        memset(name, 0, 256);
+        sprintf(name, "/this_is_the_no.%d_file.txt", i);
+        //printf("%s\r\n",name);
+        //
+        tf_create(name);
+    }
     return 0;
 }
 

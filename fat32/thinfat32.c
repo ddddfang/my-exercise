@@ -628,10 +628,16 @@ int tf_place_lfn_chain(TFFile *fp, char *filename, char *sfn) {
 // 根目录下创建文件应该修改 TFInfo.rootDirectorySize
 // 普通文件的话也应该修改 size 吧,毕竟 entry 又多了
 int tf_create(char *filename) {
-    TFFile *fp = tf_parent(filename, "r", false);   //检查一下父目录是否存在
     FatFileEntry entry;
     uint32_t cluster;
     char *temp;    
+
+    TFFile *fp = tf_fopen(filename, "r");   //检查是否已经存在了
+    if (fp) {
+        tf_fclose(fp);
+        return 0;
+    }
+    fp = tf_parent(filename, "r", false);   //检查一下父目录是否存在
     if(!fp) {
         return 1;
     }
@@ -986,7 +992,7 @@ int tf_fwrite(char *src, int size, int count, TFFile *fp) {
     fp->flags |= TF_FLAG_DIRTY;
     while(count > 0) {
         res = size;
-        fp->flags |= TF_FLAG_SIZECHANGED;
+        fp->flags |= TF_FLAG_SIZECHANGED;   //指示这个文件对应的entry需要修改
         while(res > 0) {
             //fetch 当前扇区
             tf_fetch(tf_first_sector(fp->currentCluster) + (fp->currentByte / 512));
@@ -1033,27 +1039,20 @@ int tf_fclose(TFFile *fp) {
 TFFile *tf_parent(char *filename, const char *mode, int mkParents) {
     TFFile *retval;
     char *f2;
-    dbg_printf("\r\n[DEBUG-tf_parent] Opening parent of '%s' ", filename);
     f2 = (char *)strrchr((char const*)filename, '/');
-    dbg_printf(" found / at offset %d\r\n", (int) (f2 - filename));
     retval = tf_fnopen(filename, "rw", (int)(f2 - filename));
-    // if retval == NULL, why!?  we could be out of handles
     if (retval == NULL && mkParents) {
-        // warning: recursion could fry some resources on smaller procs
         char tmpbuf[260];
         if (f2 - filename > 260) {
-            dbg_printf("F* ME, something is wrong... copying %d bytes into 260", f2-filename);
             return NULL;
         }
         strncpy(tmpbuf, filename, f2 - filename);
         tmpbuf[f2 - filename] = 0;
-        dbg_printf("\r\n[DEBUG-tf_parent] === recursive mkdir=== %s ", tmpbuf);
-        tf_mkdir( tmpbuf, mkParents );
-        retval = tf_parent( filename, mode, mkParents );
-    } else if (retval == (void*)-1) {
-        dbg_printf("\r\n[DEBUG-tf_parent] uh oh.  tf_fopen() return -1, out of handles?");
+        tf_mkdir(tmpbuf, mkParents);
+        retval = tf_parent(filename, mode, mkParents);
+    } else if (retval == (void*) -1) {
+        return NULL;
     }
-    dbg_printf("\r\n[DEBUG-tf_parent] Returning parent of %s", filename);
     return retval;
 }
 
@@ -1066,7 +1065,6 @@ int tf_fflush(TFFile *fp) {
     if(!(fp->flags & TF_FLAG_DIRTY))
         return 0;
 
-    dbg_printf("\r\n[DEBUG-tf_fflush] Flushing file... ");
     // First write any pending data to disk
     if(tf_info.sectorFlags & TF_FLAG_DIRTY) {
         rc = tf_store();
@@ -1080,20 +1078,16 @@ int tf_fflush(TFFile *fp) {
         } else {
             // Open the parent directory
             dir = tf_parent(fp->filename, "r+", false);
-            if (dir == (void*)-1) {
-                dbg_printf("\r\n[DEBUG-tf_fflush] FAILED to get parent!");
+            if (dir == (void *)-1) {
                 return -1;
             }
             filename = (char *)strrchr((char const*)fp->filename, '/');
-
-            dbg_printf("\r\n[DEBUG-tf_fflush] Opened %s's parent for directory entry modification... ", fp->filename);
 
             // Seek to the entry we want to modify and pull it from disk
             tf_find_file(dir, filename + 1);
             tf_fread((char *)&entry, sizeof(FatFileEntry), dir);
             tf_fseek(dir, (int32_t)-sizeof(FatFileEntry), dir->pos);
-            dbg_printf("\r\n[DEBUG-tf_fflush] Updating file size from %d to %d ", entry.msdos.fileSize, fp->size-1);
-            
+
             // Modify the entry in place to reflect the new file size
             entry.msdos.fileSize = fp->size - 1;
             tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, dir); // Write fatfile entry back to disk
@@ -1101,32 +1095,28 @@ int tf_fflush(TFFile *fp) {
         }
         fp->flags &= ~TF_FLAG_SIZECHANGED;
     }
-    dbg_printf("\r\n[DEBUG-tf_fflush] Flushed. ");
     fp->flags &= ~TF_FLAG_DIRTY;
     return rc;
 }
 
-/*
- * Remove a file from the filesystem
- * @param filename - The full path of the file to be removed
- * @return 
- */
+//param filename - The full path of the file to be removed
+//要从其父目录中将这个文件对应的 entrys 删除
+//从fat表中将其占用的  cluster chain 释放
 int tf_remove(char *filename) {
     TFFile *fp;
     FatFileEntry entry;
     int rc;
     uint32_t startCluster;
 
-    // Sanity check
     fp = tf_fopen(filename, "r");
-    if(fp == NULL)
-        return -1;  // return an error if we're removing a file that doesn't exist
-    startCluster = fp->startCluster; // Remember first cluster of the file so we can remove the clusterchain
-    tf_fclose(fp);  //flush
+    if(fp == NULL)  // return an error if we're removing a file that doesn't exist
+        return -1;
 
-    // TODO Don't leave an orphaned LFN
+    startCluster = fp->startCluster; // Remember first cluster of the file so we can remove the clusterchain
+    tf_fclose(fp);  // flush
+
     fp = tf_parent(filename, "r+", false);
-    rc = tf_find_file(fp, (strrchr((char *)filename, '/') + 1));
+    rc = tf_find_file(fp, (strrchr((char *)filename, '/') + 1));    //匹配上了后,pos会指向 dos entry
     if(!rc) {
         while(1) {
             rc = tf_fseek(fp, (int32_t)sizeof(FatFileEntry), fp->pos);
@@ -1154,36 +1144,28 @@ int tf_remove(char *filename) {
 uint32_t tf_find_free_cluster() {
     uint32_t i, entry, totalClusters;
 
-    dbg_printf("\r\n[DEBUG-tf_find_free_cluster] Searching for a free cluster... ");
     totalClusters = tf_info.totalSectors / tf_info.sectorsPerCluster;
     for(i = 0; i < totalClusters; i++) {
         entry = tf_get_fat_entry(i);
         if((entry & 0x0fffffff) == 0)
             break;
-        tf_printf("cluster %x: %x", i, entry);
     }
-    dbg_printf("\r\n[DEBUGtf_find_free_cluster] Returning Free cluster number: %d for allocation", i);
     return i;
 }
 
-/* Optimize search for a free cluster */
 uint32_t tf_find_free_cluster_from(uint32_t c) {
     uint32_t i, entry, totalClusters;
-    dbg_printf("\r\n[DEBUG-tf_find_free_cluster_from] Searching for a free cluster from %x... ", c);
     totalClusters = tf_info.totalSectors / tf_info.sectorsPerCluster;
     for(i = c; i < totalClusters; i++) {
         entry = tf_get_fat_entry(i);
         if((entry & 0x0fffffff) == 0)
             break;
-        tf_printf("cluster %x: %x", i, entry);
     }
-    /* We couldn't find anything here so search from the beginning */
+    // We couldn't find anything here so search from the beginning
     if (i == totalClusters) {
-        dbg_printf("\r\n[DEBUG-tf_find_free_cluster_from] Couldn't find one from there... starting from beginning");
         return tf_find_free_cluster();
     }
 
-    dbg_printf("\r\n[DEBUG-tf_find_free_cluster_from] Free cluster number: %d ", i);
     return i;
 }
 
