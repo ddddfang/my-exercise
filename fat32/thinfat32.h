@@ -95,7 +95,7 @@ typedef union struct_FatFileEntry {
 
 
 
-
+// 最长文件名
 #define TF_MAX_PATH 256
 #define TF_FILE_HANDLES 5
 
@@ -175,7 +175,7 @@ typedef struct struct_TFFILE {
     uint32_t currentClusterIdx; // cur rw pos is No.x cluster in this file
     uint32_t currentCluster;    // cur rw pos is No.x cluster in FAT
     short currentSector;
-    short currentByte;
+    short currentByte;  //在当前cluster内的偏移(byte为单位)也是下一个待写入的位置
     uint32_t pos;
     uint8_t flags;
     uint8_t attributes;

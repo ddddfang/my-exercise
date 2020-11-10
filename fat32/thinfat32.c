@@ -360,8 +360,7 @@ char *tf_walk(char *filename, TFFile *fp) {
         // Remember that tf_find_file is only going to search from the beginning of the filename
         // up until the first path separation character,(fang: strncasecmp in tf_compare_filename_segment)
         if(tf_find_file(fp, filename)) {
-            // This happens when we couldn't actually find the file
-            fp->flags = 0xff;
+            fp->flags = 0xff;   //fang: 告诉调用 tf_walk 的人,这个文件找不到,entry没有修改就ok,fp在内存中无所谓
             return NULL;
         }
         //当在目录(fp)下找到filename的时候,fp->pos已经在filename对应的那个entry处了
@@ -380,7 +379,7 @@ char *tf_walk(char *filename, TFFile *fp) {
         fp->currentSector = 0;
         fp->currentByte = 0;
         fp->pos = 0;
-        fp->flags = TF_FLAG_OPEN;
+        fp->flags = TF_FLAG_OPEN;   //啥时候关闭呢??
         fp->size = (entry.msdos.attributes & TF_ATTR_DIRECTORY) ? 0xffffffff :entry.msdos.fileSize;
         if(*filename == '\x00')
             return NULL;    //fang : instead of return "", we return a NULL
@@ -415,7 +414,6 @@ void tf_release_handle(TFFile *fp) {
 }
 
 // Convert a character to uppercase
-// TODO: Re-do how filename conversions are done.
 char upper(char c) {
     if(c >= 'a' && c <= 'z') {
         return c + ('A'-'a');
@@ -544,23 +542,9 @@ int tf_shorten_filename(char *dest, char *src, uint8_t num) {
     return 0;
 }
 
-/*
- * Create a LFN entry from the filename provided.
- * - The entry is constructed from all, or the first 13 characters in the filename (whichever is smaller)
- * - If filename is <=13 bytes long, the NULL pointer is returned
- * - If the filename >13 bytes long, an entry is constructed for the first 13 bytes, and a pointer is 
- *   returned to the remainder of the filename.
- * ARGS
- *   filename - string containing the filename for which to create an entry
- *   entry - pointer to a FatFileEntry structure, which is populated as an LFN entry
- * RETURN
- *   NULL if this is the last entry for this file, or a string pointer to the remainder of the string
- *   if the entire filename won't fit in one entry
- * WARNING
- *   Because this function works in forward order, and LFN entries are stored in reverse, it does
- *   NOT COMPUTE LFN SEQUENCE NUMBERS.  You have to do that on your own.  Also, because the function
- *   acts on partial filenames IT DOES NOT COMPUTE LFN CHECKSUMS.  You also have to do that on your own.  
- */
+//根据 filename 填充一个 lfn entry,若此 lfn entry 已经足够表达 filename,则返回 NULL
+//否则会只填充一个 lfn entry, 对应 filename 的前13个字符,并将剩余的 filename 返回
+//关于 lfn 中的第一个字节 SEQUENCE number,需要外部自己填充
 char *tf_create_lfn_entry(char *filename, FatFileEntry *entry) {
     int i, done = 0;
     for(i = 0; i < 5; i++) {
@@ -619,10 +603,8 @@ int tf_place_lfn_chain(TFFile *fp, char *filename, char *sfn) {
     FatFileEntry entry;
     uint8_t seq;
 
-    // fang: first, compute how many entries we need to hold this filename
-    // then, last_strptr point to the last part of filename
+    // 计算有多少 entry,同时将 last_strptr 指向 filename 的最后一部分
     while((strptr = tf_create_lfn_entry(strptr, &entry)) != NULL) {
-        tf_printf("\r\n=====PRECOMPUTING LFN LENGTH: strptr: %s", strptr);
         last_strptr = strptr;
         entries += 1;
     }
@@ -633,7 +615,8 @@ int tf_place_lfn_chain(TFFile *fp, char *filename, char *sfn) {
         tf_create_lfn_entry(last_strptr, &entry);
         entry.lfn.sequence_number = seq;
         entry.lfn.checksum = tf_lfn_checksum(sfn);
-        
+
+        //tf_fwrite 会做调整的吧,万一写入导致cluster不够,要有 "去fat表扩展cluster chain" 的动作
         tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);
         seq = ((seq & ~0x40) - 1);
         last_strptr -= 13;
@@ -642,7 +625,8 @@ int tf_place_lfn_chain(TFFile *fp, char *filename, char *sfn) {
 }
 
 // fang: create a file, should give a full name, like "/home/fang/abc.txt"
-// refine: 如果当前目录大到放不下的话,应该修改fat表chain啊
+// 根目录下创建文件应该修改 TFInfo.rootDirectorySize
+// 普通文件的话也应该修改 size 吧,毕竟 entry 又多了
 int tf_create(char *filename) {
     TFFile *fp = tf_parent(filename, "r", false);   //检查一下父目录是否存在
     FatFileEntry entry;
@@ -661,7 +645,7 @@ int tf_create(char *filename) {
 
     cluster = tf_find_free_cluster();   // fang: this cluster will be the start cluster of the created file
     tf_set_fat_entry(cluster, TF_MARK_EOC32); // Marks the new cluster as the last one (but no longer free)
-    // TODO shorten these entries with memset
+
     entry.msdos.attributes = 0;
     entry.msdos.creationTimeMs = 0x25;//
     entry.msdos.creationTime = 0x7e3c;
@@ -675,6 +659,7 @@ int tf_create(char *filename) {
     temp = strrchr(filename, '/') + 1;
     tf_choose_sfn(entry.msdos.filename, temp, fp);  //生成 sfn 并填充到 entry.msdos.filename
 
+    //tf_fwrite 会做调整的吧,万一写入导致cluster不够,要有 "去fat表扩展cluster chain" 的动作
     tf_place_lfn_chain(fp, temp, entry.msdos.filename);         //生成lfn(以sfn作为校验)对应的entries,并写入到fp
     tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);     //将填充好的dos entry写入到fp
 
@@ -693,7 +678,6 @@ int tf_create(char *filename) {
  * fang: if mkParents > 0, this is like <mkdir -p xxx/xxx/xxx> and cannot have the final "/"
  */
 int tf_mkdir(char *filename, int mkParents) {
-    // FIXME: figure out how the root directory location is determined.
     char orig_fn[TF_MAX_PATH];
     TFFile *fp;
     FatFileEntry entry, blank;
@@ -722,7 +706,7 @@ int tf_mkdir(char *filename, int mkParents) {
         return 1;
     }
 
-    do {
+    do {    //找到一个空闲的 entry
         tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
     } while(entry.msdos.filename[0] != '\x00');
     tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
@@ -730,7 +714,6 @@ int tf_mkdir(char *filename, int mkParents) {
     cluster = tf_find_free_cluster();
     tf_set_fat_entry(cluster, TF_MARK_EOC32); // Marks the new cluster as the last one (but no longer free)
 
-    // TODO shorten these entries with memset
     entry.msdos.attributes = TF_ATTR_DIRECTORY ;
     entry.msdos.creationTimeMs = 0x25;
     entry.msdos.creationTime = 0x7e3c;
@@ -751,21 +734,19 @@ int tf_mkdir(char *filename, int mkParents) {
     tf_fclose(fp);
     tf_release_handle(fp);
 
-
     fp = tf_fopen(orig_fn, "w");
-    // set up .
-    memcpy( entry.msdos.filename, ".          ", 11 );
+
+    memcpy( entry.msdos.filename, ".          ", 11 );  // set up .
     //entry.msdos.attributes = TF_ATTR_DIRECTORY;
     //entry.msdos.firstCluster = cluster & 0xffff    
     tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);
-    // set up ..
-    memcpy( entry.msdos.filename, "..         ", 11 );
+
+    memcpy( entry.msdos.filename, "..         ", 11 );  // set up ..
     //entry.msdos.attributes = TF_ATTR_DIRECTORY;
     //entry.msdos.firstCluster = cluster & 0xffff
     tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);
 
     tf_fwrite((char *)&blank, sizeof(FatFileEntry), 1, fp);
-
     tf_fclose(fp);
     tf_release_handle(fp);
     return 0;
@@ -819,14 +800,13 @@ int tf_listdir(char *filename, FatFileEntry* entry, TFFile **fp) {
 }
 
 
-
 TFFile *tf_fopen(char *filename, const char *mode) {
     TFFile *fp;
 
     fp = tf_fnopen(filename, mode, strlen(filename));
     if(fp == NULL) {
         if(strchr(mode, '+') || strchr(mode, 'w') || strchr(mode, 'a')) {
-              tf_create(filename); 
+            tf_create(filename); 
         }
         return tf_fnopen(filename, mode, strlen(filename));
     }
@@ -843,10 +823,11 @@ TFFile *tf_fnopen(char *filename, const char *mode, int n) {
     uint32_t cluster;
 
     if (fp == NULL)
-        return (TFFile*)-1;
+        return (TFFile*) -1;
 
     strncpy(myfile, filename, n);
     myfile[n] = 0;
+
     // fang: fill in the fp for "/", so we search and walk from "/"
     fp->currentCluster = 2;
     fp->startCluster = 2;
@@ -865,7 +846,6 @@ TFFile *tf_fnopen(char *filename, const char *mode, int n) {
         temp_filename = tf_walk(temp_filename, fp);
         if(fp->flags == 0xff) {
             tf_release_handle(fp);
-            dbg_printf("\r\ntf_fnopen: cannot open file: fp->flags == 0xff ");
             return NULL;
         }
     }
@@ -880,12 +860,10 @@ TFFile *tf_fnopen(char *filename, const char *mode, int n) {
     if(strchr(mode, '+'))
         fp->mode |= TF_MODE_OVERWRITE | TF_MODE_WRITE;
     if(strchr(mode, 'w')) {
-        /* Opened for writing. Truncate file only if it's not a directory*/
+        // Opened for writing. Truncate file only if it's not a directory
         if (!(fp->attributes & TF_ATTR_DIRECTORY)) {
             fp->size = 0;
             tf_unsafe_fseek(fp, 0, 0);
-            /* Free the clusterchain starting with the second one if the file
-             * uses more than one */
             if ((cluster = tf_get_fat_entry(fp->startCluster)) != TF_MARK_EOC32) {
                 tf_free_clusterchain(cluster);
                 tf_set_fat_entry(fp->startCluster, TF_MARK_EOC32);
@@ -893,7 +871,7 @@ TFFile *tf_fnopen(char *filename, const char *mode, int n) {
         }
         fp->mode |= TF_MODE_WRITE;
     }
-
+    //填充 fp->filename
     strncpy(fp->filename, myfile, n);
     fp->filename[n] = 0;
     return fp;
@@ -907,8 +885,9 @@ int tf_free_clusterchain(uint32_t cluster) {
             break;
         }
         tf_set_fat_entry(cluster, 0x00000000);
+
         fat_entry = tf_get_fat_entry(fat_entry);
-        cluster = fat_entry;    //fang: ??
+        cluster = fat_entry;    //fang: 覆盖之前先记录下一个cluster的位置
     }
     return 0;
 }
@@ -930,8 +909,8 @@ int tf_unsafe_fseek(TFFile *fp, int32_t base, long offset) {
     long pos = base + offset;
     uint32_t mark = tf_info.type ? TF_MARK_EOC32 : TF_MARK_EOC16;
     uint32_t temp;
-    // We're only allowed to seek one past the end of the file (For writing new stuff)
-    if(pos > fp->size) {
+
+    if(pos > fp->size) {    //fang:最多 seek 到 fp->size ?
         return TF_ERR_INVALID_SEEK;
     }
     if(pos == fp->size) {
@@ -939,31 +918,24 @@ int tf_unsafe_fseek(TFFile *fp, int32_t base, long offset) {
         fp->flags |= TF_FLAG_SIZECHANGED;
     }
 
-    // Compute the cluster index of the new location
+    //这个 cluster_idx 是 逻辑上在 file 中位于第几个 cluster
     cluster_idx = pos / (tf_info.sectorsPerCluster * 512); // The cluster we want in the file
-    //print_TFFile(fp);
-    // If the cluster index matches the index we're already at, we don't need to look in the FAT
-    // If it doesn't match, we have to follow the linked list to arrive at the correct cluster 
     if(cluster_idx != fp->currentClusterIdx) {
         temp = cluster_idx;
-        /* Shortcut: If we are looking for a cluster that comes *after* the current we don't
-         * need to start at the beginning */
         if (cluster_idx > fp->currentClusterIdx) {
-            cluster_idx -= fp->currentClusterIdx;
+            cluster_idx -= fp->currentClusterIdx;   //要是seek位置在当前在文件中的cluster之后的话,理论上向后稍微找几个就到了
         } else {
             fp->currentCluster = fp->startCluster;
         }
-        fp->currentClusterIdx = temp;
+        fp->currentClusterIdx = temp;   //
+
+        //下面以 fp->currentCluster 为起始,向后 seek cluster_idx 个 cluster
         while(cluster_idx > 0) {
             // TODO Check file mode here for r/w/a/etc...
             temp = tf_get_fat_entry(fp->currentCluster); // next, next, next
-            if((temp & 0x0fffffff) != mark)
+            if((temp & 0x0fffffff) != mark) {
                 fp->currentCluster = temp;
-            else {
-                // We've reached the last cluster in the file (omg)
-                // If the file is writable, we have to allocate new space
-                // If the file isn't, our job is easy, just report an error
-                // Also, probably report an error if we're out of space
+            } else {
                 temp = tf_find_free_cluster_from(fp->currentCluster);
                 tf_set_fat_entry(fp->currentCluster, temp); // Allocates new space
                 tf_set_fat_entry(temp, mark); // Marks the new cluster as the last one
@@ -993,16 +965,13 @@ int tf_fread(char *dest, int size, TFFile *fp) {
         sector = tf_first_sector(fp->currentCluster) + (fp->currentByte / 512);
         tf_fetch(sector);
 
-        // fang: read a byte
-        dest[i] = tf_info.buffer[fp->currentByte % 512];
-        // fang: then seek to next byte
-        if(fp->attributes & TF_ATTR_DIRECTORY) {
-            //dbg_printf("READING DIRECTORY");
+        dest[i] = tf_info.buffer[fp->currentByte % 512];    // fang: read a byte
+        if(fp->attributes & TF_ATTR_DIRECTORY) {    //warning: reading a directory
             if(tf_fseek(fp, 0, fp->pos + 1)) {
                 break;
             }
         } else {
-            if(tf_fseek(fp, 0, fp->pos + 1)) {
+            if(tf_fseek(fp, 0, fp->pos + 1)) {  // fang: then seek to next byte
                 break;
             }
         }
@@ -1010,72 +979,41 @@ int tf_fread(char *dest, int size, TFFile *fp) {
     return i;
 }
 
+//每次写入 size 字节, 重复 count 次
+//每次读写的最小单位就是扇区
 int tf_fwrite(char *src, int size, int count, TFFile *fp) {
-    int i, tracking, segsize;
-    dbg_printf("\r\n[DEBUG-tf_write] Call to tf_fwrite() size=%d count=%d \r\n", size, count);
-    //printHex(src, size);
+    int res, tracking, segsize;
     fp->flags |= TF_FLAG_DIRTY;
     while(count > 0) {
-        i = size;
+        res = size;
         fp->flags |= TF_FLAG_SIZECHANGED;
-        while(i > 0) {  // really suboptimal for performance.  optimize.
-            /*
+        while(res > 0) {
+            //fetch 当前扇区
             tf_fetch(tf_first_sector(fp->currentCluster) + (fp->currentByte / 512));
-
-            tf_printf("\r\nfwrite1: cB:%x   pos: %x    tracking:%x   i/512: %x   fp->size: %x   fp->pos: %x\r\n", 
-                   fp->currentByte, fp->pos, tracking, (i<512 ? i:512), fp->size, fp->pos);
-            tf_printHex(tf_info.buffer, 512);
-
-            tf_info.buffer[fp->currentByte % 512] = *((uint8_t *) src++);
-            tf_info.sectorFlags |= TF_FLAG_DIRTY; // Mark this sector as dirty
-            i--;
-            tf_printf("\r\nfwrite2: cB:%x   pos: %x    tracking:%x   i/512: %x   fp->size: %x   fp->pos: %x\r\n", 
-                   fp->currentByte, fp->pos, tracking, (i<512 ? i:512), fp->size, fp->pos);
-            
-            tf_printf("\r\n");
-            tf_printHex(tf_info.buffer, 512);
-            
-            if(tf_unsafe_fseek(fp, 0, fp->pos +1)) {
-                return -1;    
-            }
-            tracking++;
-            */
-            // FIXME: even this new algorithm could be more efficient by elegantly combining count/size
-            tf_fetch(tf_first_sector(fp->currentCluster) + (fp->currentByte / 512));
+            //当前 pos 不足一扇区的残余, currentByte 应该是当前待写入的位置
             tracking = fp->currentByte % 512;
-            segsize = (i < 512 ? i : 512);
+            //当前要处理的数据量
+            segsize = (res > (512 - tracking)) ? (512 - tracking) : res;
             
-            tf_printf("\r\nfwrite1: cB:%x   tracking:%x   i/512: %x   fp->size: %x   fp->pos: %x\r\n", 
-                   fp->currentByte, tracking, segsize, fp->size, fp->pos);
-            tf_printHex(tf_info.buffer, 512);
-            
-            memcpy( &tf_info.buffer[ tracking ], src, segsize);
-            tf_info.sectorFlags |= TF_FLAG_DIRTY; // Mark this sector as dirty, fang: next time we fetch or read, or we call flush, write_sector will be called
-            
+            memcpy(&tf_info.buffer[tracking], src, segsize);
+            tf_info.sectorFlags |= TF_FLAG_DIRTY; // Mark this sector as dirty, fang: next time we fetch or read, or flush, write_sector will be called
+
             if (fp->pos + segsize > fp->size) {
-                tf_printf("\r\n++ increasing filesize:  %x + %x > %x",
-                       fp->pos , segsize , fp->size);
-                fp->size += segsize - (fp->pos % 512);
+                fp->size += segsize;  //这里不修改 size 下面 tf_unsafe_fseek 就会失败
             }
-            
-            tf_printf("\r\nfwrite2: cB:%x    tracking:%x   i/512: %x   fp->size: %x   fp->pos: %x\r\n", 
-                   fp->currentByte, tracking, segsize, fp->size, fp->pos);
-            tf_printf("\r\n");
-            tf_printHex(tf_info.buffer, 512);
-            
             if(tf_unsafe_fseek(fp, 0, fp->pos + segsize)) {
                 return -1;
             }
-            i -= segsize;
+            res -= segsize;
             src += segsize;
         }
         count--;
     }
-    return size - i;
+    return size - res;
 }
 
 int tf_fputs(char *src, TFFile *fp) {
-    return tf_fwrite(src, 1, strlen(src), fp);
+    return tf_fwrite(src, strlen(src), 1, fp);
 }
 
 int tf_fclose(TFFile *fp) {
