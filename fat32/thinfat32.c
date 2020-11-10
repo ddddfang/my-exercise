@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include "thinfat32.h"
 
+TFInfo tf_info;
+TFFile tf_file_handles[TF_FILE_HANDLES];
+
 int read_sector(char *data, uint32_t sector) {
     FILE *fp;
     fp = fopen("test.fat32", "r+b");
@@ -24,10 +27,6 @@ int write_sector(char *data, uint32_t blocknum) {
     fclose(fp);
     return 0;
 }
-
-
-TFInfo tf_info;
-TFFile tf_file_handles[TF_FILE_HANDLES];
 
 /*
  * Fetch a single sector from disk.
@@ -139,7 +138,6 @@ int tf_init() {
     temp = 0;
 
     // Like recording the root directory size!
-    // TODO, THis probably isn't necessary.  Remove later
     fp = tf_fopen("/", "r");
     do {
         temp += sizeof(FatFileEntry);
@@ -150,7 +148,7 @@ int tf_init() {
     tf_info.rootDirectorySize = temp;
 
     tf_fetch(0);
-    printBPB( (BPB_struct*)tf_info.buffer );
+    printBPB((BPB_struct*)tf_info.buffer);
 
     tf_fclose(fp);
     tf_release_handle(fp);
@@ -208,6 +206,126 @@ uint32_t tf_first_sector(uint32_t cluster) {
     return ((cluster - 2) * tf_info.sectorsPerCluster) + tf_info.firstDataSector;
 }
 
+//将entry中的文件名和 name(遇到第一个'/'前的部分) 匹配
+//匹配成功返回1,否则返回0
+int tf_compare_filename_segment(FatFileEntry *entry, char *name) {
+    int i, j, res = 0;
+    char reformatted_file[16];
+    char *entryname = entry->msdos.filename;
+
+    if(entry->msdos.attributes != 0x0f) {   //8.3 Segment
+        j = 0;
+        for(i = 0; i < 8; i++) {    //Filename
+            if(entryname[i] != ' ') {
+                reformatted_file[j++] = entryname[i];
+            }
+        }
+        reformatted_file[j++] = '.';
+        for(i = 8; i < 11; i++) {   //Extension
+            if(entryname[i] != ' ') {
+                reformatted_file[j++] = entryname[i];
+            }
+        }
+    } else {                                //LFN Segment
+        j = 0;
+        for(i = 0; i < 5; i++) {
+            reformatted_file[j++] = (char) entry->lfn.name1[i];
+        }
+        for(i = 0; i < 6; i++) {
+            reformatted_file[j++] = (char) entry->lfn.name2[i];
+        }
+        for(i = 0; i < 2; i++) {
+            reformatted_file[j++] = (char) entry->lfn.name3[i];
+        }
+    }
+    reformatted_file[j] = '\0';     // entry中的名字长度(包含了填充字节0xff)就是j
+
+    i = 0;
+    while((name[i] != '/') && (name[i] != '\x00'))  //计算要匹配的目标的长度
+        i++;
+
+    if (i > 13) {   //lfn最多也就是13个字符长度
+        if (strncasecmp(name, reformatted_file, 13)) {
+            res = 0;
+        } else {
+            res = 1;
+        }
+    } else {
+        if (reformatted_file[i] != 0 || strncasecmp(name, reformatted_file, i)) {
+            res = 0;    //reformatted_file[i] != 0 说明目标长度比entry中的名字短
+        } else {
+            res = 1;
+        }
+    }
+    return res;
+}
+
+//   1 for entry matches filename.  Side effect: fp seeks to that entry
+//   0 for entry doesn't match filename.  Side effect: fp seeks to next entry
+//   -1 for couldn't read an entry, due to EOF or other fread error
+//match返回的时候 fp 指向的是与name 匹配的 文件的 dos entry
+//not match, 则 fp 指向的是下一个文件对应的 entry(可能是lfn entry)
+int tf_compare_filename(TFFile *fp, char *name) {
+    uint32_t i = 0;
+    FatFileEntry entry;
+    char *compare_name = name;
+    uint32_t lfn_entries;
+    
+    tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
+    
+    // Fail if its bogus
+    if(entry.msdos.filename[0] == 0x00)
+        return -1;
+
+    if(entry.msdos.attributes != 0x0f) {    // it's a DOS entry
+        if(1 == tf_compare_filename_segment(&entry, name)) {
+            tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
+            return 1;   //match
+        } else {
+            return 0;   //doesn't match
+        }
+    } else if ((entry.lfn.sequence_number & 0xc0) == 0x40) {    //这里是一个lfn的entry
+        lfn_entries = entry.lfn.sequence_number & ~0x40;
+
+        tf_fseek(fp, (int32_t) sizeof(FatFileEntry) * (lfn_entries - 1), fp->pos);
+
+        //现在指向 dos entry,下面开始反向拿取 lfn entry
+        for(i = 0; i < lfn_entries; i++) {
+            tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
+            tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
+
+            if(!tf_compare_filename_segment(&entry, compare_name)) {
+                tf_fseek(fp, (int32_t)(i+1)*sizeof(FatFileEntry), fp->pos);
+                return 0;
+            }
+            tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
+
+            compare_name += 13;
+        }
+        tf_fseek(fp, (int32_t)sizeof(FatFileEntry) * lfn_entries, fp->pos);
+        return 1;
+    }
+    return -1;
+}
+
+//在current_directory的内容中寻找与 name("/"前)匹配的entry,
+//若匹配上, current_directory->pos 会指向匹配文件的dos entry, 返回0
+//匹配不上则 pos 会跳到下一个entry(可能是 lfn/dos entry), 返回 -1
+int tf_find_file(TFFile *current_directory, char *name) {
+    int rc;
+    tf_fseek(current_directory, 0, 0);
+
+    while(1) {
+        rc = tf_compare_filename(current_directory, name);
+        if(rc < 0)
+            break;
+        else if(rc == 1) {   // found!
+            return 0;
+        }
+    }
+    return -1;
+}
+
 /*
  * Walks the path provided, returning a valid file pointer for each successive level in the path.
  *
@@ -225,18 +343,17 @@ uint32_t tf_first_sector(uint32_t cluster) {
  * RETURN
  *   A string pointer to the next level in the path, or NULL if this is the end of the path
  */
+
 char *tf_walk(char *filename, TFFile *fp) {
     FatFileEntry entry;
 
-    // fang: don't deal with "/", too. because it's fixed, cluster 2,
+    // fang: don't deal with "/", because it's fixed, cluster 2,
     // fang: the first you call tf_walk(), fp must be handle of "/"
     if(*filename == '/') {
         filename++;
-        if(*filename == '\x00')
-            return NULL;
     }
 
-    if(*filename != '\x00') {   // There's some path left
+    if(*filename != '\x00') {
         // fp is the handle for the current directory
         // filename is the name of the current file in that directory
         // Go fetch the FatFileEntry that corresponds to the current file
@@ -247,14 +364,14 @@ char *tf_walk(char *filename, TFFile *fp) {
             fp->flags = 0xff;
             return NULL;
         }
+        //当在目录(fp)下找到filename的时候,fp->pos已经在filename对应的那个entry处了
         tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
-        // fang: here we begin to change filename[] and fp !!!
-        // Walk over path separators
+
         while((*filename != '/') && (*filename != '\x00'))
             filename += 1;
         if(*filename == '/')
             filename += 1;
-        // Set up the file pointer now that we've got information for the next level in the path hierarchy
+
         fp->parentStartCluster = fp->startCluster;
         fp->startCluster = ((uint32_t)(entry.msdos.eaIndex & 0xffff) << 16) | (entry.msdos.firstCluster & 0xffff);
         fp->attributes = entry.msdos.attributes;
@@ -269,7 +386,6 @@ char *tf_walk(char *filename, TFFile *fp) {
             return NULL;    //fang : instead of return "", we return a NULL
         return filename;
     }
-    // We're out of path.  This walk is COMPLETE.
     return NULL;
 }
 
@@ -308,13 +424,12 @@ char upper(char c) {
     }
 }
 
-char temp[13];  //<8>.<3>\0, total=8+1+3+1
-
 void tf_choose_sfn(char *dest, char *src, TFFile *fp) {
     int results, num = 1;
     TFFile xfile;
     // throwaway fp that doesn't muck with the original
     memcpy( &xfile, fp, sizeof(TFFile) );
+    char temp[13];  //<8>.<3>\0, total=8+1+3+1
 
     while (1) {
         results = tf_shorten_filename( dest, src, num );
@@ -445,8 +560,6 @@ int tf_shorten_filename(char *dest, char *src, uint8_t num) {
  *   Because this function works in forward order, and LFN entries are stored in reverse, it does
  *   NOT COMPUTE LFN SEQUENCE NUMBERS.  You have to do that on your own.  Also, because the function
  *   acts on partial filenames IT DOES NOT COMPUTE LFN CHECKSUMS.  You also have to do that on your own.  
- * TODO
- *   Test and further improve on this function
  */
 char *tf_create_lfn_entry(char *filename, FatFileEntry *entry) {
     int i, done = 0;
@@ -484,8 +597,8 @@ char *tf_create_lfn_entry(char *filename, FatFileEntry *entry) {
     else
         return NULL;
 }
+
 // Taken from http://en.wikipedia.org/wiki/File_Allocation_Table
-//
 uint8_t tf_lfn_checksum(const char *pFcbName)
 {
     int i;
@@ -495,29 +608,20 @@ uint8_t tf_lfn_checksum(const char *pFcbName)
     return sum;
 }
 
-// fang: for each filename, generate one or more entries, and place these enties before(after?) file entry
-// (FatFileLFN in file entry will pointer out where the complete lfn locate.)
-// and don't forget to modify FAT32 table to chain them.(tf_create_lfn_entry() has some warnings, about
-// this chain is in reverse order)
+// fang: 生成filename对应的 entries, 并把他们放在当前fp所指向的位置
+// (这些 entry 都在文件的dos entry之前,且是倒序放置的)
+// and don't forget to modify FAT32 table to chain them.
 int tf_place_lfn_chain(TFFile *fp, char *filename, char *sfn) {
-    // Windows does reverse chaining:  0x44, 0x03, 0x02, 0x01
     char *strptr = filename;
     int entries = 1;
     int i;
     char *last_strptr = filename;
     FatFileEntry entry;
     uint8_t seq;
-    //uint8_t sfn[12];
-    
-    //tf_choose_sfn(sfn, filename, fp);
-    //tf_shorten_filename(sfn, filename, 1);
-    //sfn[11] = 0;     // tf_shorten_filename no longer does this...
-    
-    // create the chains - probably only to get a count!?
-    // FIXME: just pre-calculate and don't do all this recomputing!
-    // fang: here just calculate how many entries will be generated for this file name
-    //while(strptr = tf_create_lfn_entry(strptr, &entry)) {   //fang: first, compute how many entries we need to hold this filename
-    while((strptr = tf_create_lfn_entry(strptr, &entry)) != NULL) {   //fang: first, compute how many entries we need to hold this filename
+
+    // fang: first, compute how many entries we need to hold this filename
+    // then, last_strptr point to the last part of filename
+    while((strptr = tf_create_lfn_entry(strptr, &entry)) != NULL) {
         tf_printf("\r\n=====PRECOMPUTING LFN LENGTH: strptr: %s", strptr);
         last_strptr = strptr;
         entries += 1;
@@ -525,40 +629,36 @@ int tf_place_lfn_chain(TFFile *fp, char *filename, char *sfn) {
 
     // LFN sequence number (first byte of LFN)
     seq = entries | 0x40;
-    tf_printf("\r\n===== Applying LFNs (%d) =====", entries);
     for(i = 0; i < entries; i++) {
         tf_create_lfn_entry(last_strptr, &entry);
         entry.lfn.sequence_number = seq;
         entry.lfn.checksum = tf_lfn_checksum(sfn);
         
-        dbg_printf("\r\n[DEBUG-tf_place_lfn_chain] Placing LFN chain entry @ %d", fp->pos);
         tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);
-        seq = ((seq & ~0x40)-1);
-        last_strptr -= 13;    
+        seq = ((seq & ~0x40) - 1);
+        last_strptr -= 13;
     }
     return 0;
 }
 
 // fang: create a file, should give a full name, like "/home/fang/abc.txt"
+// refine: 如果当前目录大到放不下的话,应该修改fat表chain啊
 int tf_create(char *filename) {
-    TFFile *fp = tf_parent(filename, "r", false);
+    TFFile *fp = tf_parent(filename, "r", false);   //检查一下父目录是否存在
     FatFileEntry entry;
     uint32_t cluster;
     char *temp;    
-    dbg_printf("\r\n[DEBUG-tf_create] Creating new file: '%s'", filename);
-    if(!fp)
+    if(!fp) {
         return 1;
+    }
     tf_fclose(fp);
-    fp = tf_parent(filename, "r+", false);
-    // Now we have the directory in which we want to create the file, open for overwrite
-    do {
-        //"seek" to the end
+
+    fp = tf_parent(filename, "r+", false);          //开始向父目录写
+    do {    //先在父目录中找一个空闲的 entry
         tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
-        tf_printf("Skipping existing directory entry... %d\r\n", fp->pos);
     } while(entry.msdos.filename[0] != '\x00');
-    // Back up one entry, this is where we put the new filename entry, 
-    // fang: when we read this entry, we already at the end of it
     tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
+
     cluster = tf_find_free_cluster();   // fang: this cluster will be the start cluster of the created file
     tf_set_fat_entry(cluster, TF_MARK_EOC32); // Marks the new cluster as the last one (but no longer free)
     // TODO shorten these entries with memset
@@ -573,18 +673,14 @@ int tf_create(char *filename) {
     entry.msdos.firstCluster = cluster & 0xffff;
     entry.msdos.fileSize = 0;
     temp = strrchr(filename, '/') + 1;
-    dbg_printf("\r\n[DEBUG-tf_create] FILENAME CONVERSION: %s", temp);
-    tf_choose_sfn(entry.msdos.filename, temp, fp);  //fang: seems the sfn is only for checksum, in tf_place_lfn_chain()
-    tf_printf("\r\n==== tf_create: SFN: %s", entry.msdos.filename);
-    tf_place_lfn_chain(fp, temp, entry.msdos.filename); //fang
-    //tf_choose_sfn(entry.msdos.filename, temp, fp);
-    //tf_shorten_filename(entry.msdos.filename, temp);
-    //printf("\r\n==== tf_create: SFN: %s", entry.msdos.filename);
-    tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);   //fang: write the file entry to fp->pos(parent dir's position)
+    tf_choose_sfn(entry.msdos.filename, temp, fp);  //生成 sfn 并填充到 entry.msdos.filename
 
-    memset(&entry, 0, sizeof(FatFileEntry));    // fang: continue write an empty entry, for next time we create.
-    //entry.msdos.filename[0] = '\x00';
+    tf_place_lfn_chain(fp, temp, entry.msdos.filename);         //生成lfn(以sfn作为校验)对应的entries,并写入到fp
+    tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);     //将填充好的dos entry写入到fp
+
+    memset(&entry, 0, sizeof(FatFileEntry));        //继续写入一个空闲的 entry
     tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);
+
     tf_fclose(fp);
     return 0;
 }
@@ -598,7 +694,7 @@ int tf_create(char *filename) {
  */
 int tf_mkdir(char *filename, int mkParents) {
     // FIXME: figure out how the root directory location is determined.
-    char orig_fn[ TF_MAX_PATH ];
+    char orig_fn[TF_MAX_PATH];
     TFFile *fp;
     FatFileEntry entry, blank;
 
@@ -606,8 +702,8 @@ int tf_mkdir(char *filename, int mkParents) {
     uint32_t cluster;
     char *temp;
 
-    strncpy( orig_fn, filename, TF_MAX_PATH - 1 );
-    orig_fn[ TF_MAX_PATH - 1 ] = 0;
+    strncpy(orig_fn, filename, TF_MAX_PATH - 1);
+    orig_fn[TF_MAX_PATH - 1] = 0;
 
     memset(&blank, 0, sizeof(FatFileEntry));
 
@@ -616,34 +712,24 @@ int tf_mkdir(char *filename, int mkParents) {
         tf_fclose(fp);
         tf_release_handle(fp);
         if (mkParents) {
-            tf_printf("\r\n[DEBUG-tf_mkdir] Skipping creation of existing directory.");
             return 0;
         }
-        dbg_printf("\r\n[DEBUG-tf_mkdir] Hey there, duffy, DUPLICATES are not allowed.");
-        return 1;
+        return 1;   //不允许重名文件夹
     }
-    dbg_printf("\r\n[DEBUG-tf_mkdir] The directory does not currently exist... Creating now.  %s", filename);
 
     fp = tf_parent(filename, "r+", mkParents);
     if (!fp) {
-        dbg_printf("\r\n[DEBUG-tf_mkdir] Parent Directory doesn't exist.");
         return 1;
     }
 
-    dbg_printf("\r\n[DEBUG-tf_mkdir] Creating new directory: '%s'", filename);
-    // Now we have the directory in which we want to create the file, open for overwrite
     do {
         tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
-        tf_printf("Skipping existing directory entry... %d\n", fp->pos);
     } while(entry.msdos.filename[0] != '\x00');
-    // Back up one entry, this is where we put the new filename entry
     tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
 
-    // go find some space for our new friend
     cluster = tf_find_free_cluster();
     tf_set_fat_entry(cluster, TF_MARK_EOC32); // Marks the new cluster as the last one (but no longer free)
 
-    // set up our new directory entry
     // TODO shorten these entries with memset
     entry.msdos.attributes = TF_ATTR_DIRECTORY ;
     entry.msdos.creationTimeMs = 0x25;
@@ -656,29 +742,22 @@ int tf_mkdir(char *filename, int mkParents) {
     entry.msdos.firstCluster = cluster & 0xffff;
     entry.msdos.fileSize = 0;
     temp = strrchr(filename, '/') + 1;
-    dbg_printf("\r\n[DEBUG-tf_mkdir] DIRECTORY NAME CONVERSION: %s", temp);
+    tf_choose_sfn(entry.msdos.filename, temp, fp);
 
-    tf_choose_sfn(entry.msdos.filename, temp, fp);//fang: seems the sfn is only for checksum, in tf_place_lfn_chain()
-    dbg_printf("\r\n==== tf_mkdir: SFN: %s", entry.msdos.filename);
     tf_place_lfn_chain(fp, temp, entry.msdos.filename);
-
     tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);
-
-    //psc = fp->startCluster; // store this for later
 
     tf_fwrite((char *)&blank, sizeof(FatFileEntry), 1, fp);
     tf_fclose(fp);
     tf_release_handle(fp);
 
-    dbg_printf("\r\n  initializing directory entry: %s", orig_fn);
-    fp = tf_fopen(orig_fn, "w");
 
+    fp = tf_fopen(orig_fn, "w");
     // set up .
     memcpy( entry.msdos.filename, ".          ", 11 );
     //entry.msdos.attributes = TF_ATTR_DIRECTORY;
     //entry.msdos.firstCluster = cluster & 0xffff    
     tf_fwrite((char *)&entry, sizeof(FatFileEntry), 1, fp);
-
     // set up ..
     memcpy( entry.msdos.filename, "..         ", 11 );
     //entry.msdos.attributes = TF_ATTR_DIRECTORY;
@@ -825,7 +904,6 @@ int tf_free_clusterchain(uint32_t cluster) {
     fat_entry = tf_get_fat_entry(cluster);
     while(fat_entry < TF_MARK_EOC32) {  //fang: this chain should end with TF_MARK_EOC32
         if (fat_entry <= 2) {       // catch-all to save root directory from corrupted stuff
-            dbg_printf("\r\n\r\n+++++++++++++++++ SOMETHING WICKED THIS WAY COMES!  End of FAT cluster chain is <=2 (end should be 0x0ffffff8)\r\n");
             break;
         }
         tf_set_fat_entry(cluster, 0x00000000);
@@ -854,7 +932,6 @@ int tf_unsafe_fseek(TFFile *fp, int32_t base, long offset) {
     uint32_t temp;
     // We're only allowed to seek one past the end of the file (For writing new stuff)
     if(pos > fp->size) {
-        dbg_printf("\r\n[DEBUG-tf_unsafe_fseek] SEEK ERROR (pos=%ld > fp.size=%d) ", pos, fp->size);
         return TF_ERR_INVALID_SEEK;
     }
     if(pos == fp->size) {
@@ -906,157 +983,6 @@ int tf_unsafe_fseek(TFFile *fp, int32_t base, long offset) {
     fp->pos = pos;
     return 0;
 }
-
-/*
- * Given a file handle to the current directory and a filename, populate the provided FatFileEntry with the
- * file information for the given file.
- * SIDE EFFECT: the position in current_directory will be set to the beginning of the fatfile entry (for overwriting purposes)
- * returns 0 on match, -1 on fail
- * fang: when found this file, TFFile's pos will be changed to the beginning of that file's entry
- */
-int tf_find_file(TFFile *current_directory, char *name) {
-    int rc;
-    tf_fseek(current_directory, 0, 0);
-
-    while(1) {
-        rc = tf_compare_filename(current_directory, name);
-        if(rc < 0)
-            break;
-        else if(rc == 1) {   // found!
-            tf_printf("\r\n    [DEBUG-tf_find_file] (match) Exiting... rc==1, returning 0");
-            return 0;
-        }
-    }
-    return -1;
-}
-
-/*
- * tf_compare_filename_segment compares a given filename against a particular
- * FatFileEntry (a 32-byte structure pulled off disk, all of these are back-to-back
- * in a typical Directory entry on the disk)
- * figures out formatted name, does comparison, and returns 0:failure, 1:match
- */
-int tf_compare_filename_segment(FatFileEntry *entry, char *name) { //, uint8_t last) {
-    int i,j;
-    char reformatted_file[16];
-    char *entryname = entry->msdos.filename;
-
-    if(entry->msdos.attributes != 0x0f) {
-        tf_printf(" 8.3 Segment: ");
-        // Filename
-        j = 0;
-        for(i = 0; i < 8; i++) {
-            if(entryname[i] != ' ') {
-                reformatted_file[j++] = entryname[i];
-            }
-        }
-        reformatted_file[j++] = '.';
-        // Extension
-        for(i = 8; i < 11; i++) {
-            if(entryname[i] != ' ') {
-                reformatted_file[j++] = entryname[i];
-            }
-        }
-    } else {
-        tf_printf(" LFN Segment: ");
-        j = 0;
-        for(i = 0; i < 5; i++) {
-            reformatted_file[j++] = (char) entry->lfn.name1[i];
-        }
-        for(i = 0; i < 6; i++) {
-            reformatted_file[j++] = (char) entry->lfn.name2[i];
-        }
-        for(i = 0; i < 2; i++) {
-            reformatted_file[j++] = (char) entry->lfn.name3[i];
-        }
-    }
-    reformatted_file[j++] = '\x00';
-    i = 0;
-    while((name[i] != '/') && (name[i] != '\x00'))
-        i++; // will this work for 8.3?  this should be calculated in the section with knowledge of lfn/8.3
-
-    tf_printf("\r\n        [DEBUG] Comparing filename segment '%s' (given) to '%s' (from disk) ", name, reformatted_file);
-    // FIXME: only compare the 13 or less bytes left in the reformatted_file string... but that doesn't match all the way to the end of the test string....
-    
-    // the role of 'i' changes here to become the return value.  perhaps this doesn't gain us enough in performance to avoid using a real retval?
-    // PROBLEM: THIS FUNCTION assumes that if the length of the "name" is tested by the caller.
-    //   if the LFN pieces all match, but the "name" is longer... this will never fail.
-    if (i > 13) {
-        if (strncasecmp(name, reformatted_file, 13)) {
-            tf_printf("  - 0 (doesn't match)\r\n");
-            i = 0;
-        } else {
-            tf_printf("  - 1 (match)\r\n");
-            i = 1;
-        }
-    } else {
-        if (reformatted_file[i] != 0 || strncasecmp(name, reformatted_file, i)) {
-            i = 0;
-            tf_printf("  - 0 (doesn't match)\r\n");
-        } else {
-            i = 1;
-            tf_printf("  - 1 (match)\r\n");
-        }
-    }
-    return i;
-}
-// 
-// Reads a single FatFileEntry from fp, compares it to the MSDOS filename specified by *name
-// Returns:
-//   1 for entry matches filename.  Side effect: fp seeks to that entry
-//   0 for entry doesn't match filename.  Side effect: fp seeks to next entry
-//   -1 for couldn't read an entry, due to EOF or other fread error
-//
-int tf_compare_filename(TFFile *fp, char *name) {
-    uint32_t i = 0;
-    FatFileEntry entry;
-    char *compare_name = name;
-    uint32_t lfn_entries;
-    
-    // Read a single directory entry
-    tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
-    
-    // Fail if its bogus
-    if(entry.msdos.filename[0] == 0x00)
-        return -1;
-
-    // If it's a DOS entry, then:
-    if(entry.msdos.attributes != 0x0f) {
-        // If it's a match, seek back an entry to the beginning of it, return 1
-        if(1 == tf_compare_filename_segment(&entry, name)) { //, true)) {
-            tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
-            return 1;   //match
-        } else {
-            return 0;   //doesn't match
-        }
-    } else if ((entry.lfn.sequence_number & 0xc0) == 0x40) {
-        //CHECK FOR 0x40 bit set or this is not the first (last) LFN entry!
-        // If this is the first LFN entry, mask off the extra bit (0x40) and you get the number of entries in the chain
-        lfn_entries = entry.lfn.sequence_number & ~0x40;
-
-        // Seek to the last entry in the chain (LFN entries store name in reverse, so the last shall be first)
-        tf_fseek(fp, (int32_t) sizeof(FatFileEntry) * (lfn_entries - 1), fp->pos);
-
-        for(i = 0; i < lfn_entries; i++) {
-            tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
-            tf_fread((char *)&entry, sizeof(FatFileEntry), fp);
-
-            if(!tf_compare_filename_segment(&entry, compare_name)) {
-                tf_fseek(fp, (int32_t)(i)*sizeof(FatFileEntry), fp->pos);
-                tf_printf("\r\n pos: %x", fp->pos);
-                tf_printf("\r\n      [DEBUG-tf_compare_filename] LFN Exiting... returning 0  (no match)");
-                return 0;
-            }
-            tf_fseek(fp, (int32_t)-sizeof(FatFileEntry), fp->pos);
-
-            compare_name += 13;
-        }
-        tf_fseek(fp, (int32_t)sizeof(FatFileEntry) * lfn_entries, fp->pos);
-        return 1;
-    }
-    return -1;
-}
-
 
 // fang: here should return bytes num we actually read.
 // and here can refine to be more effective.(512 bytes once)
@@ -1155,7 +1081,6 @@ int tf_fputs(char *src, TFFile *fp) {
 int tf_fclose(TFFile *fp) {
     int rc;
     
-    dbg_printf("\r\n[DEBUG-tf_close] Closing file... ");
     rc =  tf_fflush(fp);
     fp->flags &= ~TF_FLAG_OPEN; // Mark the file as available for the system to use
     // FIXME: is there any reason not to release the handle here?
