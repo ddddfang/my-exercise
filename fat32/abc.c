@@ -97,6 +97,10 @@ int test_basic_append(char *input_file, char *write_string) {
 }
 
 int main(int argc, char **argv) {
+
+    //这样的话dd完成即可,就不要格式化了,这里来格式化
+    tf_initializeMedia(204800);
+
     int rc;
     char *ws = "Clock running-time A clock returns the absolute-time according \
     to that clock with gst_clock_get_time (). From the absolute-time is a running-time calculated,\
@@ -183,7 +187,29 @@ int main(int argc, char **argv) {
         //printf("%s\r\n",name);
         //
         tf_create(name);
+
+        TFFile *fp = tf_fopen(name, "w");
+        memset(name, 0, 256);
+        sprintf(name, "this is the test content for file %d.\r\n    ---frifayfang\r\n", i);
+        if(fp) {
+            rc = tf_fwrite(name, strlen(name), 1, fp);
+            if(rc < 1) {
+                tf_fclose(fp);
+                printf("DATA_WRITE_ERROR\r\n");
+                return -1;
+            } else {
+                tf_fclose(fp);
+            }
+        } else {
+            printf("FILE_OPEN_ERROR\r\n");
+        }
     }
+//    for (int i = 0; i < 10; i++) {
+//        memset(name, 0, 256);
+//        sprintf(name, "/this_is_the_no.%d_file.txt", i);
+
+//        tf_remove(name);
+//    }
     return 0;
 }
 

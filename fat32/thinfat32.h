@@ -121,21 +121,6 @@ typedef union struct_FatFileEntry {
 //#define DEBUG 1
 
 
-#ifdef DEBUG
-
-    #define dbg_printf(...) printf(__VA_ARGS__)
-    #define dbg_printHex(x,y) printHex(x,y)
-
-    #define tf_printf(...) printf(__VA_ARGS__)
-    #define tf_printHex(x,y) printHex(x,y)
-
-#else   // DEBUG
-    #define dbg_printf(...)
-    #define dbg_printHex(x,y)
-    #define tf_printf(...) 
-    #define tf_printHex(x,y)
-#endif  // DEBUG
-
 #define LSN(CN, bpb) SSA + ((CN-2) * bpb->SectorsPerCluster)
 
 #ifndef min
@@ -242,7 +227,6 @@ int tf_fwrite(char *src, int size, int count, TFFile *fp);
 int tf_fputs(char *src, TFFile *fp);
 int tf_mkdir(char *filename, int mkParents);
 int tf_remove(char *filename);
-void tf_print_open_handles(void);
 
 uint32_t tf_find_free_cluster();
 uint32_t tf_find_free_cluster_from(uint32_t c);
