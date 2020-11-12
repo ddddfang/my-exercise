@@ -880,51 +880,85 @@ int tf_mkdir(char *filename, int mkParents) {
     return 0;
 }
 
-
-//**** COMPLETE UNTESTED tf_listdir ****//
-// this may be better served by simply opening the directory directly through C2
-// parsing is not a huge deal...
-// returns 1 when valid entry, 0 when done.
-int tf_listdir(char *filename, FatFileEntry* entry, TFFile **fp) {
-    // May Require a terminating "/."
-    // FIXME: What do we do with the results?!  perhaps take in a fp and assume
-    //  that if not NULL, it's already in the middle of a listdir!  if NULL
-    //  we do the tf_parent thing and then start over.  if not, we return the 
-    //  next FatFileEntry almost like a callback...  and return NULL when we've
-    //  reached the end.  almost like.. gulp... strtok.  ugh.  maybe not.  
-    //  still, it may suck less than other things... i mean, by nature, listdir 
-    //  is inherently dynamic in size, and we have no re/malloc.
-    //uint32_t cluster;
-    //char *temp;
-
-    if (*fp == NULL)
-        *fp = tf_parent(filename, "r", false);
-
-    if(!*fp)
-        return 1;
-    // do magic here.
-    while (1) {
-        tf_fread((char *)entry, sizeof(FatFileEntry), *fp);
-        switch (((uint8_t *)entry)[0]){
-            case 0x05:
-                // pending delete files under some implementations.  ignore it.
-                break;
-            case 0xe5:
-                // freespace (deleted file)
-                break;
-            case 0x2e:
-                // '.' or '..'
-                break;
-            case 0x00:
-                // no further entries exist, and this one is available
-                tf_fclose(*fp);
-                *fp = NULL;
-                return 0;
-            default:
-                return 1;
+//dir 结尾不要带/
+//return -1: you should stop
+//return 1: a ready file info
+//return 0: you can continue
+int tf_listdir(char *dir, TFFileInfo *finfo) {
+    int i, j, t;
+    FatFileEntry entry;
+    if (finfo->fp == NULL) {
+        finfo->fp = tf_fnopen(dir, "r", strlen(dir));
+        if (finfo->fp == NULL) {
+            return -1;
         }
     }
-    return 0;
+
+    tf_fread((char *)&entry, sizeof(FatFileEntry), finfo->fp);
+    //print_FatFileEntry(&entry);
+
+    switch (((uint8_t *)&entry)[0]){
+        case 0x05:
+            // pending delete files under some implementations.  ignore it.
+            return 0;
+        case 0xe5:
+            // freespace (deleted file)
+            return 0;
+        case 0x2e:
+            // '.' or '..'
+            return 0;
+        case 0x00:
+            // no further entries exist, and this one is available
+            tf_fclose(finfo->fp);
+            finfo->fp = NULL;
+            return -1;
+        default:
+            if(entry.msdos.attributes != 0x0f) {    // it's a DOS entry
+                finfo->size = entry.msdos.fileSize;
+                finfo->fdate = entry.msdos.modifiedDate;
+                finfo->ftime = entry.msdos.modifiedTime;
+                finfo->attributes = entry.msdos.attributes;
+                //access lfn
+                i = 0;  //往回access了多少个entry
+                j = 0;  //
+                memset(finfo->filename, 0, TF_MAX_PATH);
+                while (1) {
+                    //
+                    tf_fseek(finfo->fp, (int32_t)-(2 * sizeof(FatFileEntry)), finfo->fp->pos);
+                    tf_fread((char *)&entry, sizeof(FatFileEntry), finfo->fp);
+                    i++;
+                    if(entry.msdos.attributes != 0x0f) {
+                        break;
+                    } else {
+                        for(t = 0; t < 5; t++) {
+                            if (entry.lfn.name1[t] == 0xffff) {
+                                break;
+                            }
+                            finfo->filename[j++] = entry.lfn.name1[t];
+                        }
+                        for(t = 0; t < 6; t++) {
+                            if (entry.lfn.name2[t] == 0xffff) {
+                                break;
+                            }
+                            finfo->filename[j++] = entry.lfn.name2[t];
+                        }
+                        for(t = 0; t < 2; t++) {
+                            if (entry.lfn.name3[t] == 0xffff) {
+                                break;
+                            }
+                            finfo->filename[j++] = entry.lfn.name3[t];
+                        }
+                        if ((entry.lfn.sequence_number & 0xc0) == 0x40) {
+                            break;
+                        }
+                    }
+                }
+                tf_fseek(finfo->fp, (int32_t)i * sizeof(FatFileEntry), finfo->fp->pos);
+                return 1;
+            }
+            return 0;
+    }
+    return -1;
 }
 
 TFFile *tf_fopen(char *filename, const char *mode) {

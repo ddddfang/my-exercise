@@ -169,6 +169,14 @@ typedef struct struct_TFFILE {
     char filename[TF_MAX_PATH];
 } TFFile;
 
+typedef struct {
+    TFFile *fp; //
+    uint32_t size;
+    uint32_t fdate;
+    uint32_t ftime;
+    uint8_t attributes;
+    char filename[TF_MAX_PATH];
+} TFFileInfo;
 
 #define TF_MODE_READ 0x01
 #define TF_MODE_WRITE 0x02
@@ -227,6 +235,7 @@ int tf_fwrite(char *src, int size, int count, TFFile *fp);
 int tf_fputs(char *src, TFFile *fp);
 int tf_mkdir(char *filename, int mkParents);
 int tf_remove(char *filename);
+int tf_listdir(char *dir, TFFileInfo *finfo);
 
 uint32_t tf_find_free_cluster();
 uint32_t tf_find_free_cluster_from(uint32_t c);

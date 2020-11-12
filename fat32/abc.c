@@ -210,6 +210,12 @@ int main(int argc, char **argv) {
 
 //        tf_remove(name);
 //    }
+    TFFileInfo info = {0};
+    while ((rc = tf_listdir("/", &info)) != -1) {
+        if (rc == 1) {  //got !
+            printf("listdir:(%x),%s\r\n", info.attributes, info.filename);
+        }
+    }
     return 0;
 }
 
