@@ -42,12 +42,12 @@ int tf_fetch(uint32_t sector) {
     return rc;
 }
 
-int tf_store() {
+int tf_store(void) {
     tf_info.sectorFlags &= ~TF_FLAG_DIRTY;
     return write_sector(tf_info.buffer, tf_info.currentSector);
 }
 
-int tf_init() {
+int tf_init(void) {
     BPB_struct *bpb;
     uint32_t fat_size, root_dir_sectors, data_sectors, cluster_count, temp;
     TFFile *fp;
@@ -144,7 +144,7 @@ int tf_set_fat_entry(uint32_t cluster, uint32_t value) {
 
 // Walk the FAT from the very first data sector and find a cluster that's available
 // Return the cluster index
-uint32_t tf_find_free_cluster() {
+uint32_t tf_find_free_cluster(void) {
     uint32_t i, entry, totalClusters;
 
     totalClusters = tf_info.totalSectors / tf_info.sectorsPerCluster;
@@ -375,7 +375,7 @@ char *tf_walk(char *filename, TFFile *fp) {
 
 //有一些接口是直接打开文件,返回一个指针,事先没有malloc的,所以这个指针指向的内容只能是
 //内部的内存,所以这里准备了一些静态的 TFFiles
-TFFile *tf_get_free_handle() {
+TFFile *tf_get_free_handle(void) {
     int i;
     TFFile *fp;
     for(i = 0; i < TF_FILE_HANDLES; i++) {
@@ -562,8 +562,7 @@ char *tf_create_lfn_entry(char *filename, FatFileEntry *entry) {
 }
 
 // Taken from http://en.wikipedia.org/wiki/File_Allocation_Table
-uint8_t tf_lfn_checksum(const char *pFcbName)
-{
+uint8_t tf_lfn_checksum(const char *pFcbName) {
     int i;
     uint8_t sum = 0;
     for (i = 11; i; i--)
@@ -1185,8 +1184,7 @@ int tf_remove(char *filename) {
 // this should take in some lun number to make this all good...
 //but we'll do that when we get read/write_sector lun-aware.
 // also, hardcoded sector configuration
-uint32_t tf_initializeMedia(uint32_t totalSectors)
-{
+uint32_t tf_initializeMedia(uint32_t totalSectors) {
     char sectorBuf0[512];
     char sectorBuf[512];
     BPB_struct bpb; // = (BPB_struct*)sectorBuf0;
@@ -1288,122 +1286,121 @@ uint32_t tf_initializeMedia(uint32_t totalSectors)
     return 0;
 }
 
-uint32_t tf_initializeMediaNoBlock(uint32_t totalSectors, int start)
-{
-    char sectorBuf0[512];
-    char sectorBuf[512];
-    BPB_struct bpb; // = (BPB_struct*)sectorBuf0;
-    uint32_t fat;
-    static uint32_t scl, ssa, sectors_per_cluster;
+//uint32_t tf_initializeMediaNoBlock(uint32_t totalSectors, int start)
+//{
+//    char sectorBuf0[512];
+//    char sectorBuf[512];
+//    BPB_struct bpb; // = (BPB_struct*)sectorBuf0;
+//    uint32_t fat;
+//    static uint32_t scl, ssa, sectors_per_cluster;
 
-    if( start )
-    {
-        memset(sectorBuf0, 0x00, 0x200);
-        memset(&bpb, 0, sizeof(bpb));
+//    if( start ) {
+//        memset(sectorBuf0, 0x00, 0x200);
+//        memset(&bpb, 0, sizeof(bpb));
 
-            // jump instruction
-        bpb.BS_JumpBoot[0] = 0xEB;
-        bpb.BS_JumpBoot[1] = 0x58;
-        bpb.BS_JumpBoot[2] = 0x90;
+//            // jump instruction
+//        bpb.BS_JumpBoot[0] = 0xEB;
+//        bpb.BS_JumpBoot[1] = 0x58;
+//        bpb.BS_JumpBoot[2] = 0x90;
 
-            // OEM name
-        memcpy( bpb.BS_OEMName, " mkdosfs", 8);
+//            // OEM name
+//        memcpy( bpb.BS_OEMName, " mkdosfs", 8);
 
-            // BPB
-        bpb.BytesPerSector = 0x200;        // hard coded, must be a define somewhere
-        bpb.SectorsPerCluster = 32;        // this may change based on drive size
-        sectors_per_cluster = 32;
-        bpb.ReservedSectorCount = 32;
-        bpb.NumFATs = 2;
-        //bpb.RootEntryCount = 0;
-        //bpb.TotalSectors16 = 0;
-        bpb.Media = 0xf8;
-        //bpb.FATSize16 = 0;
-        bpb.SectorsPerTrack = 32;          // unknown here
-        bpb.NumberOfHeads = 64;            // ?
-        //bpb.HiddenSectors = 0;
-        bpb.TotalSectors32 = totalSectors;
-            // BPB-FAT32 Extension
-        bpb.FSTypeSpecificData.fat32.FATSize = totalSectors / 4095;
-        //bpb.FSTypeSpecificData.fat32.ExtFlags = 0;
-        //bpb.FSTypeSpecificData.fat32.FSVersion = 0;
-        bpb.FSTypeSpecificData.fat32.RootCluster = 2;
-        bpb.FSTypeSpecificData.fat32.FSInfo = 1;
-        bpb.FSTypeSpecificData.fat32.BkBootSec = 6;
-        //memset( bpb.FSTypeSpecificData.fat32.Reserved, 0x00, 12 );
-        //bpb.FSTypeSpecificData.fat32.BS_DriveNumber = 0;
-        //bpb.FSTypeSpecificData.fat32.BS_Reserved1 = 0;
-        bpb.FSTypeSpecificData.fat32.BS_BootSig = 0x29;
-        bpb.FSTypeSpecificData.fat32.BS_VolumeID = 0xf358ddc1;      // hardcoded volume id.  this is weird.  should be generated each time.
-        memset( bpb.FSTypeSpecificData.fat32.BS_VolumeLabel, 0x20, 11);
-        memcpy( bpb.FSTypeSpecificData.fat32.BS_FileSystemType, "FAT32   ", 8); 
-        memcpy( sectorBuf0, &bpb, sizeof(bpb) );
+//            // BPB
+//        bpb.BytesPerSector = 0x200;        // hard coded, must be a define somewhere
+//        bpb.SectorsPerCluster = 32;        // this may change based on drive size
+//        sectors_per_cluster = 32;
+//        bpb.ReservedSectorCount = 32;
+//        bpb.NumFATs = 2;
+//        //bpb.RootEntryCount = 0;
+//        //bpb.TotalSectors16 = 0;
+//        bpb.Media = 0xf8;
+//        //bpb.FATSize16 = 0;
+//        bpb.SectorsPerTrack = 32;          // unknown here
+//        bpb.NumberOfHeads = 64;            // ?
+//        //bpb.HiddenSectors = 0;
+//        bpb.TotalSectors32 = totalSectors;
+//            // BPB-FAT32 Extension
+//        bpb.FSTypeSpecificData.fat32.FATSize = totalSectors / 4095;
+//        //bpb.FSTypeSpecificData.fat32.ExtFlags = 0;
+//        //bpb.FSTypeSpecificData.fat32.FSVersion = 0;
+//        bpb.FSTypeSpecificData.fat32.RootCluster = 2;
+//        bpb.FSTypeSpecificData.fat32.FSInfo = 1;
+//        bpb.FSTypeSpecificData.fat32.BkBootSec = 6;
+//        //memset( bpb.FSTypeSpecificData.fat32.Reserved, 0x00, 12 );
+//        //bpb.FSTypeSpecificData.fat32.BS_DriveNumber = 0;
+//        //bpb.FSTypeSpecificData.fat32.BS_Reserved1 = 0;
+//        bpb.FSTypeSpecificData.fat32.BS_BootSig = 0x29;
+//        bpb.FSTypeSpecificData.fat32.BS_VolumeID = 0xf358ddc1;      // hardcoded volume id.  this is weird.  should be generated each time.
+//        memset( bpb.FSTypeSpecificData.fat32.BS_VolumeLabel, 0x20, 11);
+//        memcpy( bpb.FSTypeSpecificData.fat32.BS_FileSystemType, "FAT32   ", 8);
+//        memcpy( sectorBuf0, &bpb, sizeof(bpb) );
 
-        memcpy( sectorBuf0+0x5a, "\x0e\x1f\xbe\x77\x7c\xac\x22\xc0\x74\x0b\x56\xb4\x0e\xbb\x07\x00\xcd\x10\x5e\xeb\xf0\x32\xe4\xcd\x17\xcd\x19\xeb\xfeThis is not a bootable disk.  Please insert a bootable floppy and\r\npress any key to try again ... \r\n", 129 );
+//        memcpy( sectorBuf0+0x5a, "\x0e\x1f\xbe\x77\x7c\xac\x22\xc0\x74\x0b\x56\xb4\x0e\xbb\x07\x00\xcd\x10\x5e\xeb\xf0\x32\xe4\xcd\x17\xcd\x19\xeb\xfeThis is not a bootable disk.  Please insert a bootable floppy and\r\npress any key to try again ... \r\n", 129 );
 
-        fat = (bpb.ReservedSectorCount);
+//        fat = (bpb.ReservedSectorCount);
 
-            // ending signatures
-        sectorBuf0[0x1fe] = 0x55;
-        sectorBuf0[0x1ff] = 0xAA;
-        write_sector( sectorBuf0, 0 );
+//            // ending signatures
+//        sectorBuf0[0x1fe] = 0x55;
+//        sectorBuf0[0x1ff] = 0xAA;
+//        write_sector( sectorBuf0, 0 );
 
-        ssa = (bpb.NumFATs * bpb.FSTypeSpecificData.fat32.FATSize) + fat;
+//        ssa = (bpb.NumFATs * bpb.FSTypeSpecificData.fat32.FATSize) + fat;
 
-            // FSInfo sector
-        memset(sectorBuf, 0x00, 0x200);
-        *((uint32_t*)sectorBuf)         = 0x41615252;
-        *((uint32_t*)(sectorBuf+0x1e4))   = 0x61417272;
-        *((uint32_t*)(sectorBuf+0x1e8))   = 0xffffffff; // last known number of free data clusters on volume
-        *((uint32_t*)(sectorBuf+0x1ec))   = 0xffffffff; // number of most recently known to be allocated cluster
-        *((uint32_t*)(sectorBuf+0x1f0))   = 0;  // reserved
-        *((uint32_t*)(sectorBuf+0x1f4))   = 0;  // reserved
-        *((uint32_t*)(sectorBuf+0x1f8))   = 0;  // reserved
-        *((uint32_t*)(sectorBuf+0x1fc))   = 0xaa550000;
-        write_sector( sectorBuf, 1 );
-        fat = (bpb.ReservedSectorCount);
+//            // FSInfo sector
+//        memset(sectorBuf, 0x00, 0x200);
+//        *((uint32_t*)sectorBuf)         = 0x41615252;
+//        *((uint32_t*)(sectorBuf+0x1e4))   = 0x61417272;
+//        *((uint32_t*)(sectorBuf+0x1e8))   = 0xffffffff; // last known number of free data clusters on volume
+//        *((uint32_t*)(sectorBuf+0x1ec))   = 0xffffffff; // number of most recently known to be allocated cluster
+//        *((uint32_t*)(sectorBuf+0x1f0))   = 0;  // reserved
+//        *((uint32_t*)(sectorBuf+0x1f4))   = 0;  // reserved
+//        *((uint32_t*)(sectorBuf+0x1f8))   = 0;  // reserved
+//        *((uint32_t*)(sectorBuf+0x1fc))   = 0xaa550000;
+//        write_sector( sectorBuf, 1 );
+//        fat = (bpb.ReservedSectorCount);
 
-        memset(sectorBuf, 0x00, 0x200);
-        for (scl=2 ; scl<sectors_per_cluster ; scl++) {
-            memset(sectorBuf, 0x00, 0x200);
-            write_sector( sectorBuf, scl );
-        }
-            // write backup copy of metadata
-        write_sector( sectorBuf0, 6 );
-
+//        memset(sectorBuf, 0x00, 0x200);
+//        for (scl=2 ; scl<sectors_per_cluster ; scl++) {
+//            memset(sectorBuf, 0x00, 0x200);
+//            write_sector( sectorBuf, scl );
+//        }
+//            // write backup copy of metadata
+//        write_sector( sectorBuf0, 6 );
 
 
-            // make Root Directory 
 
-        // whack ROOT directory file: SSA = RSC + FN x SF + ceil((32 x RDE)/SS)  and LSN = SSA + (CN-2) x SC
-        // this clears the first cluster of the root directory
-        memset(sectorBuf, 0x00, 0x200);     // 0x00000000 is the unallocated marker
-        for (scl=ssa+bpb.SectorsPerCluster; scl>=ssa; scl--) {
-            write_sector( sectorBuf, scl );
-        }
+//            // make Root Directory
 
-        scl = fat;
-        return true;
-    } else {
-        uint32_t stop = scl+100;
-        if( stop >= (ssa/2) ) stop = ssa/2;
-        memset(sectorBuf, 0x00, 0x200);     // 0x00000000 is the unallocated marker
-        for (; scl<stop; scl++) {
-            write_sector( sectorBuf, scl );
-            write_sector( sectorBuf, scl+(ssa/2) );
-        }
-        if( scl < ssa/2 )
-            return false; 
+//        // whack ROOT directory file: SSA = RSC + FN x SF + ceil((32 x RDE)/SS)  and LSN = SSA + (CN-2) x SC
+//        // this clears the first cluster of the root directory
+//        memset(sectorBuf, 0x00, 0x200);     // 0x00000000 is the unallocated marker
+//        for (scl=ssa+bpb.SectorsPerCluster; scl>=ssa; scl--) {
+//            write_sector( sectorBuf, scl );
+//        }
 
-        //SSA = RSC + FN x SF + ceil((32 x RDE)/SS)  and LSN = SSA + (CN-2) x SC
+//        scl = fat;
+//        return true;
+//    } else {
+//        uint32_t stop = scl+100;
+//        if( stop >= (ssa/2) ) stop = ssa/2;
+//        memset(sectorBuf, 0x00, 0x200);     // 0x00000000 is the unallocated marker
+//        for (; scl<stop; scl++) {
+//            write_sector( sectorBuf, scl );
+//            write_sector( sectorBuf, scl+(ssa/2) );
+//        }
+//        if( scl < ssa/2 )
+//            return false;
+
+//        //SSA = RSC + FN x SF + ceil((32 x RDE)/SS)  and LSN = SSA + (CN-2) x SC
         
-        *((uint32_t*)(sectorBuf+0x000))   = 0x0ffffff8;   // special - EOF marker
-        *((uint32_t*)(sectorBuf+0x004))   = 0x0fffffff;   // special and clean
-        *((uint32_t*)(sectorBuf+0x008))   = 0x0ffffff8;   // root directory (one cluster)
-        write_sector( sectorBuf, sectors_per_cluster );
-    }
-    return true;
-}
+//        *((uint32_t*)(sectorBuf+0x000))   = 0x0ffffff8;   // special - EOF marker
+//        *((uint32_t*)(sectorBuf+0x004))   = 0x0fffffff;   // special and clean
+//        *((uint32_t*)(sectorBuf+0x008))   = 0x0ffffff8;   // root directory (one cluster)
+//        write_sector( sectorBuf, sectors_per_cluster );
+//    }
+//    return true;
+//}
 
 
 //-------------------------------------------------------------------------------------------------

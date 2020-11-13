@@ -6,8 +6,53 @@
 #include <stdint.h>
 
 
-#define false 0
-#define true 1
+#define false   0
+#define true    1
+// 最长文件名
+#define TF_MAX_PATH 256
+#define TF_FILE_HANDLES 5
+
+#define TF_FLAG_DIRTY       0x01
+#define TF_FLAG_OPEN        0x02
+#define TF_FLAG_SIZECHANGED 0x04
+#define TF_FLAG_ROOT        0x08
+
+#define TYPE_FAT12 0
+#define TYPE_FAT16 1
+#define TYPE_FAT32 2
+
+#define TF_MARK_BAD_CLUSTER32   0x0ffffff7
+#define TF_MARK_BAD_CLUSTER16   0xfff7
+#define TF_MARK_EOC32           0x0ffffff8
+#define TF_MARK_EOC16           0xfff8
+
+#define LFN_ENTRY_CAPACITY 13       // bytes per LFN entry
+
+
+#define TF_MODE_READ        0x01
+#define TF_MODE_WRITE       0x02
+#define TF_MODE_APPEND      0x04
+#define TF_MODE_OVERWRITE   0x08
+
+#define TF_ATTR_READ_ONLY       0x01
+#define TF_ATTR_HIDDEN          0x02
+#define TF_ATTR_SYSTEM          0x04
+#define TF_ATTR_VOLUME_LABEL    0x08
+#define TF_ATTR_DIRECTORY       0x10
+#define TF_ATTR_ARCHIVE         0x20
+#define TF_ATTR_DEVICE          0x40 // Should never happen!
+#define TF_ATTR_UNUSED          0x80
+
+// New error codes
+#define TF_ERR_NO_ERROR     0
+#define TF_ERR_BAD_BOOT_SIGNATURE   1
+#define TF_ERR_BAD_FS_TYPE  2
+#define TF_ERR_INVALID_SEEK 1
+
+// FS Types
+#define TF_TYPE_FAT16 0
+#define TF_TYPE_FAT32 1
+
 
 #pragma pack(push, 1)
 
@@ -16,24 +61,24 @@ typedef struct struct_BPBFAT1216_struct {
     uint8_t     BS_DriveNumber;           // 1
     uint8_t     BS_Reserved1;             // 1
     uint8_t     BS_BootSig;               // 1
-    uint32_t          BS_VolumeID;              // 4
+    uint32_t    BS_VolumeID;              // 4
     uint8_t     BS_VolumeLabel[11];       // 11
     uint8_t     BS_FileSystemType[8];     // 8
 } BPB1216_struct;
 
 // Starting at offset 36 into the BPB, this is the structure for a FAT32 FS
 typedef struct struct_BPBFAT32_struct {
-    uint32_t          FATSize;             // 4
+    uint32_t    FATSize;             // 4
     uint16_t    ExtFlags;              // 2
     uint16_t    FSVersion;             // 2
-    uint32_t          RootCluster;           // 4
+    uint32_t    RootCluster;           // 4
     uint16_t    FSInfo;                // 2
     uint16_t    BkBootSec;             // 2
     uint8_t     Reserved[12];          // 12
     uint8_t     BS_DriveNumber;            // 1
     uint8_t     BS_Reserved1;              // 1
     uint8_t     BS_BootSig;                // 1
-    uint32_t          BS_VolumeID;               // 4
+    uint32_t    BS_VolumeID;               // 4
     uint8_t     BS_VolumeLabel[11];        // 11
     uint8_t     BS_FileSystemType[8];      // 8
 } BPB32_struct;
@@ -51,8 +96,8 @@ typedef struct struct_BPB_struct {
     uint16_t    FATSize16;             // 2
     uint16_t    SectorsPerTrack;       // 2
     uint16_t    NumberOfHeads;         // 2
-    uint32_t          HiddenSectors;         // 4
-    uint32_t          TotalSectors32;        // 4
+    uint32_t    HiddenSectors;         // 4
+    uint32_t    TotalSectors32;        // 4
     union {
         BPB1216_struct fat16;
         BPB32_struct fat32;
@@ -82,7 +127,7 @@ typedef struct struct_FatFileLFN {
     uint8_t reserved;       // Always 0x00
     uint8_t checksum;       // Checksum of DOS Filename.  See Docs.
     uint16_t name2[6];      // 6 More chars of name (UTF-16)
-        uint16_t firstCluster;  // Always 0x0000
+    uint16_t firstCluster;  // Always 0x0000
     uint16_t name3[2];
 } FatFileLFN;
 
@@ -93,40 +138,6 @@ typedef union struct_FatFileEntry {
 
 #pragma pack(pop)
 
-
-
-// 最长文件名
-#define TF_MAX_PATH 256
-#define TF_FILE_HANDLES 5
-
-#define TF_FLAG_DIRTY 0x01
-#define TF_FLAG_OPEN 0x02
-#define TF_FLAG_SIZECHANGED 0x04
-#define TF_FLAG_ROOT 0x08
-
-#define TYPE_FAT12 0
-#define TYPE_FAT16 1
-#define TYPE_FAT32 2
-
-#define TF_MARK_BAD_CLUSTER32 0x0ffffff7
-#define TF_MARK_BAD_CLUSTER16 0xfff7
-#define TF_MARK_EOC32 0x0ffffff8
-#define TF_MARK_EOC16 0xfff8
-
-#define LFN_ENTRY_CAPACITY 13       // bytes per LFN entry
-
-#define TF_ATTR_DIRECTORY 0x10
-
-
-//#define DEBUG 1
-
-
-#define LSN(CN, bpb) SSA + ((CN-2) * bpb->SectorsPerCluster)
-
-#ifndef min
-#define min(x,y)  (x<y)? x:y  
-#define max(x,y)  (x>y)? x:y  
-#endif
 
     
 // Ultimately, once the filesystem is checked for consistency, you only need a few
@@ -178,78 +189,49 @@ typedef struct {
     char filename[TF_MAX_PATH];
 } TFFileInfo;
 
-#define TF_MODE_READ 0x01
-#define TF_MODE_WRITE 0x02
-#define TF_MODE_APPEND 0x04
-#define TF_MODE_OVERWRITE 0x08
-
-#define TF_ATTR_READ_ONLY 0x01
-#define TF_ATTR_HIDDEN 0x02
-#define TF_ATTR_SYSTEM 0x04
-#define TF_ATTR_VOLUME_LABEL 0x08
-#define TF_ATTR_DIRECTORY 0x10
-#define TF_ATTR_ARCHIVE 0x20
-#define TF_ATTR_DEVICE 0x40 // Should never happen!
-#define TF_ATTR_UNUSED 0x80
-
 
 int read_sector(char *data, uint32_t sector);
 int write_sector(char *data, uint32_t blocknum);
-// New error codes
-#define TF_ERR_NO_ERROR 0
-#define TF_ERR_BAD_BOOT_SIGNATURE 1
-#define TF_ERR_BAD_FS_TYPE 2
-
-#define TF_ERR_INVALID_SEEK 1
-
-// FS Types
-#define TF_TYPE_FAT16 0
-#define TF_TYPE_FAT32 1
-
-// New backend functions
-int tf_init(void);
 int tf_fetch(uint32_t sector);
 int tf_store(void);
 uint32_t tf_get_fat_entry(uint32_t cluster);
-int tf_set_fat_entry(uint32_t cluster, uint32_t value);
-int tf_unsafe_fseek(TFFile *fp, int32_t base, long offset);
-TFFile *tf_fnopen(char *filename, const char *mode, int n);
+uint32_t tf_find_free_cluster(void);
+uint32_t tf_find_free_cluster_from(uint32_t c);
 int tf_free_clusterchain(uint32_t cluster);
-int tf_create(char *filename);
-void tf_release_handle(TFFile *fp);
-TFFile *tf_parent(char *filename, const char *mode, int mkParents);
-int tf_shorten_filename(char *dest, char *src, uint8_t num);
-
-// New frontend functions
-int tf_init();
-int tf_fflush(TFFile *fp);
-int tf_fseek(TFFile *fp, int32_t base, long offset);
-int tf_fclose(TFFile *fp);
-int tf_fread(char *dest, int size, TFFile *fp);
-int tf_find_file(TFFile *current_directory, char *name);
-int tf_compare_filename(TFFile *fp, char *name);
 uint32_t tf_first_sector(uint32_t cluster);
+int tf_compare_filename_segment(FatFileEntry *entry, char *name);
+int tf_compare_filename(TFFile *fp, char *name);
+int tf_find_file(TFFile *current_directory, char *name);
 char *tf_walk(char *filename, TFFile *fp);
+TFFile *tf_get_free_handle(void);
+void tf_release_handle(TFFile *fp);
+char upper(char c);
+int tf_shorten_filename(char *dest, char *src, uint8_t num);
+void tf_choose_sfn(char *dest, char *src, TFFile *fp);
+char *tf_create_lfn_entry(char *filename, FatFileEntry *entry);
+uint8_t tf_lfn_checksum(const char *pFcbName);
+int tf_place_lfn_chain(TFFile *fp, char *filename, char *sfn);
+TFFile *find_free_for_entry_in_parent(char *filename, int mkParents);
+TFFile *tf_fnopen(char *filename, const char *mode, int n);
+int tf_unsafe_fseek(TFFile *fp, int32_t base, long offset);
+TFFile *tf_parent(char *filename, const char *mode, int mkParents);
+
+int tf_init(void);
+int tf_create(char *filename);
+int tf_mkdir(char *filename, int mkParents);
+int tf_listdir(char *dir, TFFileInfo *finfo);
 TFFile *tf_fopen(char *filename, const char *mode);
+int tf_fseek(TFFile *fp, int32_t base, long offset);
+int tf_fread(char *dest, int size, TFFile *fp);
 int tf_fwrite(char *src, int size, int count, TFFile *fp);
 int tf_fputs(char *src, TFFile *fp);
-int tf_mkdir(char *filename, int mkParents);
+int tf_fclose(TFFile *fp);
+int tf_fflush(TFFile *fp);
 int tf_remove(char *filename);
-int tf_listdir(char *dir, TFFileInfo *finfo);
-
-uint32_t tf_find_free_cluster();
-uint32_t tf_find_free_cluster_from(uint32_t c);
-
 uint32_t tf_initializeMedia(uint32_t totalSectors);
-uint32_t tf_initializeMediaNoBlock(uint32_t totalSectors, int start);
 
-// hidden functions... IAR requires that all functions be declared
-TFFile *tf_get_free_handle();
-char upper(char c);
 
-// New Datas
-extern TFInfo tf_info;
-extern TFFile tf_file;
+
 
 
 
@@ -257,7 +239,5 @@ void printBPB(BPB_struct *s);
 void print_sector(unsigned char *sector);
 void print_tf_info(TFInfo *t);
 void print_TFFile(TFFile *fp);
-void print_FatFileEntry(FatFileEntry *entry);
-void print_FatFile83(FatFile83 *entry);
 
 #endif
