@@ -1,0 +1,66 @@
+
+tap_if + netdev 作为我们的网卡,其中 netdev是逻辑部分,实现部分依靠 tun/tap
+
+skbuff是所有层可能都用得着的 buffer
+
+
+
+
+
+
+
+
+
+
+#tunctl
+https://www.cnblogs.com/bakari/p/10449664.html
+#tun/tap
+https://segmentfault.com/a/1190000009249039
+
+sudo tunctl -u root -t tap0
+tunctl -d tap0
+
+
+
+apt-get install uml-utilities。
+man tunctl 查看 tunctl 手册，用法如下：
+
+tunctl [ OPTIONS ] [ -u owner ] [-g group] [ -t device-name ]
+
+-u 参数指定用户名，表明这个接口只受该用户控制，这个接口发生的事不会影响到系统的接口。
+-g 指定一组用户
+-t 指定要创建的 tap/tun 设备名。
+
+[OPTIONS] 部分：
+
+-b 简单打印创建的接口名字
+-n 创建 tun 设备
+-p 创建 tap 设备，默认创建该设备
+-f tun-clone-device 指定 tun 设备对应的文件名，默认是 /dev/net/tun，有些系统是 /dev/misc/net/tun。
+-d interfacename 删除指定接口
+
+
+
+
+
+#向 tun0 这个interface发送4个ping
+ping -c 4 192.168.209.139 -I tun0
+#监视指定网卡上的数据包
+tcpdump -i tun0
+#监视 210.27.48.1 的主机收到的和发出的所有的数据包
+tcpdump host 210.27.48.1 
+
+
+#查看当前保存的arp缓存
+arp
+
+#通过arping询问主机 Melody7-PC.zhaoxin.com 的ip & mac
+arping -I enp5s0 Melody7-PC.zhaoxin.com
+arping -I enp5s0 10.28.35.101
+
+#ping局域网中的所有主机,这样基本上所有的ip都知道了
+ping 10.28.35.255 -b
+
+
+
+
