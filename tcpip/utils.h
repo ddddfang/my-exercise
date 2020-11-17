@@ -13,7 +13,7 @@
 #define DEBUG_PRINT(str, ...)                       \
     printf("%s:%u: " TAG": " str, __FILE__, __LINE__, ##__VA_ARGS__);
 #define ERROR_PRINT(str, ...)                     \
-    fprintf(stderr, "%s:%u: "str, __FILE__, __LINE__, ##__VA_ARGS__);
+    fprintf(stderr, "%s:%u: " TAG": " str, __FILE__, __LINE__, ##__VA_ARGS__);
 
 #else
 
