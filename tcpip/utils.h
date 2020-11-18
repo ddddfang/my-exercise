@@ -25,6 +25,7 @@
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 int run_cmd(char *cmd, ...);
+uint16_t checksum(void *addr, int count, int start_sum);
 
 
 
