@@ -2,6 +2,7 @@
 #include "main.h"
 #include "utils.h"
 #include "tap_if.h"
+#include "arp.h"
 
 #ifdef TAG
 #undef TAG
@@ -105,6 +106,7 @@ int main()
     //
     tun_init();
     netdev_init(NULL, NULL);
+    arp_init();
 
     create_thread(THREAD_CORE, netdev_rx_loop, NULL);
     create_thread(THREAD_TIMERS, timers_start, NULL);
@@ -113,6 +115,7 @@ int main()
 
     join_threads(); //等待所有线程退出
 
+    free_arp();
     free_netdev();
     free_tun();
     DEBUG_PRINT("Exit.\r\n");

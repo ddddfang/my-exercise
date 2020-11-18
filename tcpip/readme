@@ -18,6 +18,18 @@ https://www.cnblogs.com/bakari/p/10449664.html
 https://segmentfault.com/a/1190000009249039
 
 sudo tunctl -u root -t tap0
+
+#为接口配置ip并使用
+ifconfig tap0 192.168.0.254 up
+#为接口添加路由
+route add -host 192.168.0.1 dev tap0
+
+sudo ifconfig tap0 192.168.0.1
+#送往192.168.0.0网络的数据包都交给 192.168.0.1
+sudo route add -net 192.168.0.0 netmask 255.255.255.0 gw 192.168.0.1 
+sudo route add -net 192.168.0.0/24 gw 192.168.0.1 
+
+#删除接口
 tunctl -d tap0
 
 

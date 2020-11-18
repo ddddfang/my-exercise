@@ -2,6 +2,7 @@
 #include "main.h"
 #include "utils.h"
 #include "tap_if.h"
+#include "arp.h"
 
 /*
  *   这里作为我们的网卡,实现依赖于 linux的tun/tap虚拟网卡
@@ -14,6 +15,9 @@
 #endif
 
 
+
+#define TAP_ROUTE "10.0.0.0/24"
+#define TAP_ADDR "10.0.0.5"
 
 //-----------------------------------------------------------------
 static int tun_fd;
@@ -56,24 +60,28 @@ static int tun_alloc(char *dev)
 
 void tun_init()
 {
-    char *taproute = "10.0.0.0/24";
-    char *tapaddr = "10.0.0.5";
-
     dev = calloc(10, 1);    //"\0"
     tun_fd = tun_alloc(dev);
 
-    if (run_cmd("ip link set dev %s up", dev) != 0) {
+    if (run_cmd("sudo ifconfig %s %s", dev, TAP_ADDR) != 0) {
+        ERROR_PRINT("ERROR when setting up if\r\n");
+    }
+    if (run_cmd("sudo route add -net %s gw %s", TAP_ROUTE, TAP_ADDR) != 0) {
         ERROR_PRINT("ERROR when setting up if\r\n");
     }
 
-    //去 10.0.0.0/24 网络的所有数据包 交给 dev 网卡
-    if (run_cmd("ip route add dev %s %s", dev, taproute) != 0) {
-        ERROR_PRINT("ERROR when setting route for if\r\n");
-    }
+    //if (run_cmd("ip link set dev %s up", dev) != 0) {
+    //    ERROR_PRINT("ERROR when setting up if\r\n");
+    //}
 
-    if (run_cmd("ip address add dev %s local %s", dev, tapaddr) != 0) {
-        ERROR_PRINT("ERROR when setting addr for if\r\n");
-    }
+    ////去 10.0.0.0/24 网络的所有数据包 交给 dev 网卡
+    //if (run_cmd("ip route add dev %s %s", dev, taproute) != 0) {
+    //    ERROR_PRINT("ERROR when setting route for if\r\n");
+    //}
+
+    //if (run_cmd("ip address add dev %s local %s", dev, tapaddr) != 0) {
+    //    ERROR_PRINT("ERROR when setting addr for if\r\n");
+    //}
 }
 
 int tun_read(char *buf, int len)
@@ -137,7 +145,7 @@ void netdev_init(char *addr, char *hwaddr)
 {
     loop = netdev_alloc("127.0.0.1", "00:00:00:00:00:00", 1500);
     //fang: 这个地址为什么不是 10.0.0.5
-    netdev0 = netdev_alloc("10.0.0.5", "00:0c:29:6d:50:25", 1500);
+    netdev0 = netdev_alloc(TAP_ADDR, "00:0c:29:6d:50:25", 1500);
 }
 
 void free_netdev()
@@ -185,8 +193,7 @@ static int netdev_receive(struct sk_buff *skb)
 
     switch (hdr->ethertype) {
         case ETH_P_ARP:
-            //arp_rcv(skb);
-                    DEBUG_PRINT("arp_rcv.\r\n");
+            arp_rcv(skb);
             break;
         case ETH_P_IP:
             //ip_rcv(skb);

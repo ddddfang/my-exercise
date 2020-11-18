@@ -44,6 +44,11 @@ struct arp_cache_entry
 #define ARP_HDR_LEN sizeof(struct arp_hdr)
 #define ARP_DATA_LEN sizeof(struct arp_ipv4)
 
+//看起来 arp cache 并没有做长度上的限制
+//#define ARP_CACHE_LEN   32
+#define ARP_FREE        0
+#define ARP_WAITING     1
+#define ARP_RESOLVED    2
 
 void arp_init();
 void free_arp();
@@ -57,6 +62,7 @@ static inline struct arp_hdr *skb2arp(struct sk_buff *skb)
     return (struct arp_hdr *)(skb->head + ETH_HDR_LEN);
 }
 
+#define DEBUG_ARP 1
 
 #ifdef DEBUG_ARP
     #define arp_dbg(str, hdr)                                               \
