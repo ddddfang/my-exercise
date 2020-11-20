@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "tap_if.h"
 #include "arp.h"
+#include "ip.h"
 
 /*
  *   这里作为我们的网卡,实现依赖于 linux的tun/tap虚拟网卡
@@ -17,7 +18,7 @@
 
 
 #define TAP_ROUTE "10.0.0.0/24"
-#define TAP_ADDR "10.0.0.5"
+#define TAP_ADDR "10.28.35.174"
 
 //-----------------------------------------------------------------
 static int tun_fd;
@@ -66,9 +67,9 @@ void tun_init()
     if (run_cmd("sudo ifconfig %s %s", dev, TAP_ADDR) != 0) {
         ERROR_PRINT("ERROR when setting up if\r\n");
     }
-    if (run_cmd("sudo route add -net %s gw %s", TAP_ROUTE, TAP_ADDR) != 0) {
-        ERROR_PRINT("ERROR when setting up if\r\n");
-    }
+    //if (run_cmd("sudo route add -net %s gw %s", TAP_ROUTE, TAP_ADDR) != 0) {
+    //    ERROR_PRINT("ERROR when setting up if\r\n");
+    //}
 
     //if (run_cmd("ip link set dev %s up", dev) != 0) {
     //    ERROR_PRINT("ERROR when setting up if\r\n");
@@ -196,8 +197,8 @@ static int netdev_receive(struct sk_buff *skb)
             arp_rcv(skb);
             break;
         case ETH_P_IP:
-            //ip_rcv(skb);
-                    DEBUG_PRINT("ip_rcv.\r\n");
+            ip_rcv(skb);
+            //DEBUG_PRINT("ip_rcv.\r\n");
             break;
         case ETH_P_IPV6:
         default:
