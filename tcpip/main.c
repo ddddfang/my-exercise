@@ -1,7 +1,7 @@
 
 #include "main.h"
 #include "utils.h"
-#include "tap_if.h"
+#include "netdev.h"
 #include "arp.h"
 
 #ifdef TAG
@@ -10,8 +10,8 @@
 #endif
 
 typedef enum {
-    THREAD_CORE = 0,
-    THREAD_TIMERS,
+    THREAD_RECV_INT = 0,
+    THREAD_TIMER_INT,
     THREAD_IPC,
     THREAD_SIGNAL,
     THREAD_MAXNUM
@@ -88,6 +88,8 @@ static void *start_ipc_listener(void *arg)
     return NULL;
 }
 
+extern void *recv_interrupt(void *arg); //in tap_if.c
+
 int main()
 {
     //初始化 sigset_t
@@ -103,21 +105,18 @@ int main()
         exit(1);
     }
 
-    //
-    tun_init();
-    netdev_init(NULL, NULL);
+    netdev_init();
     arp_init();
 
-    create_thread(THREAD_CORE, netdev_rx_loop, NULL);
-    create_thread(THREAD_TIMERS, timers_start, NULL);
+    create_thread(THREAD_RECV_INT, recv_interrupt, NULL);
+    create_thread(THREAD_TIMER_INT, timers_start, NULL);
     create_thread(THREAD_IPC, start_ipc_listener, NULL);
     create_thread(THREAD_SIGNAL, stop_stack_handler, &mask);
 
     join_threads(); //等待所有线程退出
 
     free_arp();
-    free_netdev();
-    free_tun();
+    netdev_exit();
     DEBUG_PRINT("Exit.\r\n");
     return 0;
 }

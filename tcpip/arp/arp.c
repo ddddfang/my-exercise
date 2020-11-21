@@ -121,7 +121,7 @@ void arp_rcv(struct sk_buff *skb)
     merge = update_arp_translation_table(arphdr, arpdata);
 
     //dst ip 应该是我们,才需要应答, 同时获取我们网卡的 netdev
-    if (!(netdev = netdev_get(arpdata->dip))) {
+    if (!(netdev = netdev_find(arpdata->dip))) {
         ERROR_PRINT("ARP was not for us\n");
         goto drop_pkt;
     }
@@ -163,8 +163,8 @@ void arp_reply(struct sk_buff *skb, struct netdev *netdev)
     memcpy(arpdata->dmac, arpdata->smac, 6);
     arpdata->dip = arpdata->sip;
 
-    memcpy(arpdata->smac, netdev->hwaddr, 6);
-    arpdata->sip = netdev->addr;
+    memcpy(arpdata->smac, netdev->net_hwaddr, 6);
+    arpdata->sip = netdev->net_ipaddr;
 
     arphdr->opcode = ARP_REPLY;
 
@@ -179,7 +179,7 @@ void arp_reply(struct sk_buff *skb, struct netdev *netdev)
 
     skb->dev = netdev;
 
-    netdev_transmit(skb, arpdata->dmac, ETH_P_ARP);
+    net_tx(skb, arpdata->dmac, ETH_P_ARP);
     //free_skb(skb);
 }
 
@@ -201,10 +201,10 @@ int arp_request(uint32_t sip, uint32_t dip, struct netdev *netdev)
     payload = (struct arp_ipv4 *) skb_push(skb, ARP_DATA_LEN);
 
     //仔细想想这个memcpy就是一个大端
-    memcpy(payload->smac, netdev->hwaddr, netdev->addr_len);
+    memcpy(payload->smac, netdev->net_hwaddr, NETDEV_ALEN);
     payload->sip = sip;
 
-    memcpy(payload->dmac, broadcast_hw, netdev->addr_len);
+    memcpy(payload->dmac, broadcast_hw, NETDEV_ALEN);
     payload->dip = dip;
 
     arp = (struct arp_hdr *) skb_push(skb, ARP_HDR_LEN);
@@ -213,14 +213,14 @@ int arp_request(uint32_t sip, uint32_t dip, struct netdev *netdev)
     arp->opcode = htons(ARP_REQUEST);
     arp->hwtype = htons(ARP_ETHERNET); 
     arp->protype = htons(ETH_P_IP);
-    arp->hwsize = netdev->addr_len;
+    arp->hwsize = NETDEV_ALEN;
     arp->prosize = 4;
 
     arpdata_dbg("req", payload);
     payload->sip = htonl(payload->sip);
     payload->dip = htonl(payload->dip);
 
-    rc = netdev_transmit(skb, broadcast_hw, ETH_P_ARP);
+    rc = net_tx(skb, broadcast_hw, ETH_P_ARP);
     free_skb(skb);
     return rc;
 }

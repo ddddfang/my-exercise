@@ -24,6 +24,15 @@
 
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
+
+#define IPFMT "%d.%d.%d.%d"
+#define IP_FMT(ip) \
+    (ip) & 0xff, ((ip) >> 8) & 0xff, ((ip) >> 16) & 0xff, ((ip) >> 24) & 0xff
+
+#define MACFMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_FMT(ha) \
+    (ha)[0], (ha)[1], (ha)[2], (ha)[3], (ha)[4], (ha)[5]
+
 int run_cmd(char *cmd, ...);
 uint16_t checksum(void *addr, int count, int start_sum);
 

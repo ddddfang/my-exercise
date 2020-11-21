@@ -4,7 +4,7 @@
 #include "main.h"
 #include "utils.h"
 #include "skbuff.h"
-#include "tap_if.h"
+#include "netdev.h"
 
 
 #define ARP_ETHERNET    0x0001

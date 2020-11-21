@@ -1,19 +1,32 @@
+
+CONFIG_DEBUG = y
+CONFIG_DEBUG_ETH = y
+
 MODULE_BIN = myTcpip
-MODULE_OBJS += $(patsubst %.c,%.o ,$(wildcard ./*.c))
+
+MODULE_SRCS = $(shell find . -name "*.c")
+MODULE_OBJS += $(patsubst %.c,%.o ,$(MODULE_SRCS))
 CC = gcc
-OUT_DIR = .
-PUBLIC_FLAGS:=-g -O0 -Wall
+CFLAGS:= -Wall -I./include
 LDFLAGS = -lm -lz -lpthread
-MODULE_INCLUDE = -I.
+
+ifeq ($(CONFIG_DEBUG), y)
+    CFLAGS += -g -O0
+endif
+
+ifeq ($(CONFIG_DEBUG_ETH), y)
+    CFLAGS += -DDEBUG_ETH
+endif
+
 
 .PHONY:all clean
 
 %.o: %.c
-	$(CC) $(PUBLIC_FLAGS) $(MODULE_INCLUDE) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 all : clean $(MODULE_OBJS)
-	$(CC) $(MODULE_OBJS) $(PUBLIC_FLAGS) $(LDFLAGS) -o $(OUT_DIR)/$(MODULE_BIN)
+	$(CC) $(MODULE_OBJS) $(LDFLAGS) -o $(MODULE_BIN)
 
 clean:
-	-rm -f $(OUT_DIR)/$(MODULE_BIN)
+	-rm -f $(MODULE_BIN)
 	-rm -f $(MODULE_OBJS)

@@ -3,7 +3,7 @@
 
 #include "main.h"
 #include "skbuff.h"
-#include "tap_if.h"
+#include "netdev.h"
 
 #define IPV4 0x04
 #define IP_TCP 0x06
@@ -38,6 +38,20 @@ static inline struct iphdr *ip_hdr(const struct sk_buff *skb)
 
 int ip_rcv(struct sk_buff *skb);
 
+static inline uint32_t ip_parse(char *addr)
+{
+    uint32_t dst = 0;
+
+    //将点分文本的IP地址转换为 网络字节序(大端) 的IP地址
+    if (inet_pton(AF_INET, addr, &dst) != 1) {
+        perror("ERR: Parsing inet address failed");
+        exit(1);
+    }
+
+    //将一个long(4Bytes)从net(大端)转换为host(小端)
+    return ntohl(dst);
+}
+
 
 #define DEBUG_IP 1
 
@@ -47,7 +61,7 @@ int ip_rcv(struct sk_buff *skb);
             DEBUG_PRINT("ip "msg" (ihl: %hhu version: %hhu tos: %hhu "   \
                 "len %hu id: %hu frag_offset: %hu ttl: %hhu " \
                 "proto: %hhu csum: %hx " \
-                "saddr: %hhu.%hhu.%hhu.%hhu daddr: %hhu.%hhu.%hhu.%hhu)", \
+                "saddr: %hhu.%hhu.%hhu.%hhu daddr: %hhu.%hhu.%hhu.%hhu)\r\n", \
                 hdr->ihl,                                           \
                 hdr->version, hdr->tos, hdr->len, hdr->id,          \
                 hdr->frag_offset, hdr->ttl, hdr->proto, hdr->csum,   \
