@@ -5,8 +5,8 @@
 #include "skbuff.h"
 
 
-void veth_init();
-void veth_exit();
+void veth_init(void);
+void veth_exit(void);
 
 
 #endif

@@ -27,7 +27,6 @@
 
 //-----------------------------------------------------------------
 static int tun_fd;
-static struct netdev *veth;
 
 static int tap_alloc(char *devname)
 {
@@ -38,7 +37,7 @@ static int tap_alloc(char *devname)
         perror("Cannot open TUN/TAP dev\n"
             "Make sure one exists with "
             "'$ mknod /dev/net/tap c 10 200'");
-        exit(1);
+        return -1;
     }
     CLEAR(ifr);
 
@@ -83,6 +82,7 @@ int tap_write(unsigned char *buf, int len)
 }
 
 //----------------------------------------------------
+static struct netdev *veth;
 
 static int veth_dev_init(struct netdev *dev)
 {
@@ -114,7 +114,6 @@ void *recv_interrupt(void *arg)
 {
     struct pollfd pfd = {0};
     int ret;
-    int i = 0;
     while (running) {
         pfd.fd = tun_fd;
         pfd.events = POLLIN;
@@ -125,40 +124,38 @@ void *recv_interrupt(void *arg)
             DEBUG_PRINT("poll /dev/net/tun.\r\n");
         }
 
-        //DEBUG_PRINT("got %d.\r\n", i++);
-        /* get a packet and handle it */
-        struct sk_buff *skb = alloc_skb(BUFLEN);
-        unsigned int read_len = tap_read((unsigned char *)skb->data, BUFLEN);
+        //中断发生, get a packet and full-fill it
+        struct pkbuf *pkb = alloc_pkb(veth->net_mtu + (int)ETH_HDR_LEN);
+        int read_len = tap_read(pkb->pk_data, pkb->pk_len);
         if (read_len  <= 0) {
             veth->net_stats.rx_errors++;
             perror("ERR: Read from tun_fd");
-            free_skb(skb);
+            free_pkb(pkb);
             return NULL;
         } else {
             DEBUG_PRINT("read net dev size: %d\n", read_len);
             veth->net_stats.rx_packets++;
             veth->net_stats.rx_bytes += read_len;
-            skb->len = read_len;
+            pkb->pk_len = read_len;
+            net_rx(veth, pkb);  //handle this packet
+            //free_pkb(pkb);    //let stack handle free is better
         }
-        /* handle this packet */
-        net_rx(skb);
-        free_skb(skb);
     }
     return NULL;
 }
 
-static int veth_dev_xmit(struct netdev *dev, uint8_t *data, uint32_t len)
+static int veth_dev_xmit(struct netdev *dev, struct pkbuf *pkb)
 {
-    unsigned int l = tap_write(data, len);
-    if (l != len) {
-        //DEBUG_PRINT("write net dev error.\r\n");
+    int write_len = tap_write(pkb->pk_data, pkb->pk_len);
+    if (write_len != pkb->pk_len) {
+        DEBUG_PRINT("write net dev error.\r\n");
         dev->net_stats.tx_errors++;
     } else {
         dev->net_stats.tx_packets++;
-        dev->net_stats.tx_bytes += l;
+        dev->net_stats.tx_bytes += write_len;
         //DEBUG_PRINT("write net dev size: %d\r\n", l);
     }
-    return (int)l;
+    return write_len;
 }
 
 static struct netdev_ops veth_ops = {

@@ -1,6 +1,8 @@
 
+CONFIG_GDB = y
 CONFIG_DEBUG = y
 CONFIG_DEBUG_ETH = y
+CONFIG_DEBUG_ARP = n
 
 MODULE_BIN = myTcpip
 
@@ -10,14 +12,21 @@ CC = gcc
 CFLAGS:= -Wall -I./include
 LDFLAGS = -lm -lz -lpthread
 
-ifeq ($(CONFIG_DEBUG), y)
+ifeq ($(CONFIG_GDB), y)
     CFLAGS += -g -O0
+endif
+
+ifeq ($(CONFIG_DEBUG), y)
+    CFLAGS += -DDEBUG
 endif
 
 ifeq ($(CONFIG_DEBUG_ETH), y)
     CFLAGS += -DDEBUG_ETH
 endif
 
+ifeq ($(CONFIG_DEBUG_ARP), y)
+    CFLAGS += -DDEBUG_ARP
+endif
 
 .PHONY:all clean
 

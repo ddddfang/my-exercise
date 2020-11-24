@@ -1,250 +1,154 @@
 
 #include "arp.h"
+#include "ip.h"
 
 #ifdef TAG
 #undef TAG
 #define TAG "ARP"
 #endif
 
-
 static uint8_t broadcast_hw[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-static LIST_HEAD(arp_cache);
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 
-//看起来是 arp request 时候需要用到的
-static struct sk_buff *arp_alloc_skb()
+//通过 netdev(in arpentry) 网卡发起arp请求(主动), broadcast mac
+int arp_request(struct arpentry *ae)
 {
-    struct sk_buff *skb = alloc_skb(ETH_HDR_LEN + ARP_HDR_LEN + ARP_DATA_LEN);
-    //分配完成后data先跳到最后
-    skb_reserve(skb, ETH_HDR_LEN + ARP_HDR_LEN + ARP_DATA_LEN);
-    skb->protocol = htons(ETH_P_ARP);   //ETH_P_ARP是系统定义在 if_ether.h,值为0x0806
-    return skb;
-}
+    struct pkbuf *pkb = alloc_pkb(ETH_HDR_LEN + ARP_HDR_LEN);
+    struct eth_hdr *ehdr = (struct eth_hdr *)pkb->pk_data;
+    struct arp_hdr *ahdr = (struct arp_hdr *)ehdr->payload;
+    struct arp_ipv4 *payload = (struct arp_ipv4 *)ahdr->data;
 
-static struct arp_cache_entry *arp_entry_alloc(struct arp_hdr *hdr, struct arp_ipv4 *data)
-{
-    struct arp_cache_entry *entry = malloc(sizeof(struct arp_cache_entry));
-    list_init(&entry->list);
-
-    entry->state = ARP_RESOLVED;
-    entry->hwtype = hdr->hwtype;
-    entry->sip = data->sip;
-    memcpy(entry->smac, data->smac, sizeof(entry->smac));
-
-    return entry;
-}
-
-static int insert_arp_translation_table(struct arp_hdr *hdr, struct arp_ipv4 *data)
-{
-    struct arp_cache_entry *entry = arp_entry_alloc(hdr, data);
-
-    pthread_mutex_lock(&lock);
-    list_add_tail(&entry->list, &arp_cache);
-    pthread_mutex_unlock(&lock);
-
-    return 0;
-}
-
-//对方更新了mac地址,所以将cache中的mac地址也更新一下
-static int update_arp_translation_table(struct arp_hdr *hdr, struct arp_ipv4 *data)
-{
-    struct list_head *item;
-    struct arp_cache_entry *entry;
-
-    pthread_mutex_lock(&lock);
-    list_for_each(item, &arp_cache) {
-        entry = list_entry(item, struct arp_cache_entry, list);
-
-        if (entry->hwtype == hdr->hwtype && entry->sip == data->sip) {
-            memcpy(entry->smac, data->smac, 6);
-            pthread_mutex_unlock(&lock);
-            return 1;
-        }
-    }
-    pthread_mutex_unlock(&lock);
-    return 0;
-}
-
-//释放掉 arp cache
-void free_arp()
-{
-    struct list_head *item, *tmp;
-    struct arp_cache_entry *entry;
-
-    list_for_each_safe(item, tmp, &arp_cache) {
-        entry = list_entry(item, struct arp_cache_entry, list);
-        list_del(item);
-
-        free(entry);
-    }
-}
-
-void arp_init()
-{
-    return;
-}
-
-void arp_rcv(struct sk_buff *skb)
-{
-    struct arp_hdr *arphdr;
-    struct arp_ipv4 *arpdata;
-    struct netdev *netdev;
-    int merge = 0;
-
-    arphdr = skb2arp(skb);
-
-    //将skb中的大端转换为小端, ntohs: net to host, short
-    arphdr->hwtype = ntohs(arphdr->hwtype);
-    arphdr->protype = ntohs(arphdr->protype);
-    arphdr->opcode = ntohs(arphdr->opcode);
-    arp_dbg("in", arphdr);
-
-    if (arphdr->hwtype != ARP_ETHERNET) {
-        DEBUG_PRINT("ARP: Unsupported HW type\n");
-        goto drop_pkt;
-    }
-
-    if (arphdr->protype != ARP_IPV4) {
-        DEBUG_PRINT("ARP: Unsupported protocol\n");
-        goto drop_pkt;
-    }
-
-    arpdata = (struct arp_ipv4 *) arphdr->data;
-
-    //net to host, long(4Bytes)
-    arpdata->sip = ntohl(arpdata->sip);
-    arpdata->dip = ntohl(arpdata->dip);
-    arpdata_dbg("receive", arpdata);
-
-    //merge为0表示这个ip之前没有记录过,为1表示之前记录过(且现在被更新了)
-    merge = update_arp_translation_table(arphdr, arpdata);
-
-    //dst ip 应该是我们,才需要应答, 同时获取我们网卡的 netdev
-    if (!(netdev = netdev_find(arpdata->dip))) {
-        ERROR_PRINT("ARP was not for us\n");
-        goto drop_pkt;
-    }
-
-    //之前没有记录过这个ip的话,就将arp数据加入到cache
-    if (!merge && insert_arp_translation_table(arphdr, arpdata) != 0) {
-        ERROR_PRINT("ERR: No free space in ARP translation table\n");
-        goto drop_pkt;
-    }
-
-    switch (arphdr->opcode) {
-        case ARP_REQUEST:
-            //直接在原skb上操作
-            arp_reply(skb, netdev);
-            return;
-        default:
-            //ERROR_PRINT("ARP: Opcode not supported\n");
-            goto drop_pkt;
-    }
-
-drop_pkt:
-    //free_skb(skb);
-    return;
-}
-
-void arp_reply(struct sk_buff *skb, struct netdev *netdev) 
-{
-    struct arp_hdr *arphdr;
-    struct arp_ipv4 *arpdata;
-
-    arphdr = skb2arp(skb);
-
-    //skb的data移动,但是不管 arphdr 指针的事
-    skb_reserve(skb, ETH_HDR_LEN + ARP_HDR_LEN + ARP_DATA_LEN);
-    skb_push(skb, ARP_HDR_LEN + ARP_DATA_LEN);
-
-    arpdata = (struct arp_ipv4 *) arphdr->data;
-
-    memcpy(arpdata->dmac, arpdata->smac, 6);
-    arpdata->dip = arpdata->sip;
-
-    memcpy(arpdata->smac, netdev->net_hwaddr, 6);
-    arpdata->sip = netdev->net_ipaddr;
-
-    arphdr->opcode = ARP_REPLY;
-
-    arp_dbg("reply", arphdr);
-    arphdr->opcode = htons(arphdr->opcode);
-    arphdr->hwtype = htons(arphdr->hwtype);
-    arphdr->protype = htons(arphdr->protype);
-
-    arpdata_dbg("reply", arpdata);
-    arpdata->sip = htonl(arpdata->sip);
-    arpdata->dip = htonl(arpdata->dip);
-
-    skb->dev = netdev;
-
-    net_tx(skb, arpdata->dmac, ETH_P_ARP);
-    //free_skb(skb);
-}
-
-//通过 netdev 网卡发起arp请求
-int arp_request(uint32_t sip, uint32_t dip, struct netdev *netdev)
-{
-    struct sk_buff *skb;
-    struct arp_hdr *arp;
-    struct arp_ipv4 *payload;
-    int rc = 0;
-
-    skb = arp_alloc_skb();
-    if (!skb) {
-        return -1;
-    }
-
-    skb->dev = netdev;
-
-    payload = (struct arp_ipv4 *) skb_push(skb, ARP_DATA_LEN);
-
-    //仔细想想这个memcpy就是一个大端
-    memcpy(payload->smac, netdev->net_hwaddr, NETDEV_ALEN);
-    payload->sip = sip;
-
+    //we need to full fill arp related field.
+    ahdr->hwtype = htons(ARP_ETHERNET);
+    ahdr->protype = htons(ETH_P_IP);
+    ahdr->hwsize = NETDEV_ALEN; //ETH_ALEN
+    ahdr->prosize = IP_ALEN;    //4
+    ahdr->opcode = htons(ARP_OP_REQUEST);
+    // address
+    payload->sip = ae->ae_dev->net_ipaddr;
+    memcpy(payload->smac, ae->ae_dev->net_hwaddr, NETDEV_ALEN);
+    payload->dip = ae->ae_ipaddr;
     memcpy(payload->dmac, broadcast_hw, NETDEV_ALEN);
-    payload->dip = dip;
 
-    arp = (struct arp_hdr *) skb_push(skb, ARP_HDR_LEN);
-
-    arp_dbg("req", arp);
-    arp->opcode = htons(ARP_REQUEST);
-    arp->hwtype = htons(ARP_ETHERNET); 
-    arp->protype = htons(ETH_P_IP);
-    arp->hwsize = NETDEV_ALEN;
-    arp->prosize = 4;
-
-    arpdata_dbg("req", payload);
-    payload->sip = htonl(payload->sip);
-    payload->dip = htonl(payload->dip);
-
-    rc = net_tx(skb, broadcast_hw, ETH_P_ARP);
-    free_skb(skb);
-    return rc;
+    arpdata_dbg("out", payload);
+    return net_tx(ae->ae_dev, pkb, ARP_HDR_LEN + ARP_DATA_LEN, ETH_P_ARP, broadcast_hw);
 }
 
-//从cache中获取某个ip的mac
-unsigned char* arp_get_hwaddr(uint32_t sip)
+//下面几个都是被动接收
+void arp_reply(struct netdev *dev, struct pkbuf *pkb)
 {
-    struct list_head *item;
-    struct arp_cache_entry *entry;
+    struct eth_hdr *ehdr = (struct eth_hdr *)pkb->pk_data;
+    struct arp_hdr *ahdr = (struct arp_hdr *)ehdr->payload;
+    struct arp_ipv4 *payload = (struct arp_ipv4 *)ahdr->data;
 
-    pthread_mutex_lock(&lock);
-    list_for_each(item, &arp_cache) {
-        entry = list_entry(item, struct arp_cache_entry, list);
+    DEBUG_PRINT("replying arp request");
+    /* arp field */
+    ahdr->opcode = ARP_OP_REPLY;
+    memcpy(payload->dmac, payload->smac, ETH_ALEN);
+    payload->dip = payload->sip;
+    memcpy(payload->smac, dev->net_hwaddr, ETH_ALEN);
+    payload->sip = dev->net_ipaddr;
 
-        if (entry->state == ARP_RESOLVED && entry->sip == sip) {
-            arpcache_dbg("entry", entry);
-
-            uint8_t *copy = entry->smac;
-            pthread_mutex_unlock(&lock);
-
-            return copy;
-        }
-    }
-    pthread_mutex_unlock(&lock);
-    return NULL;
+    //we convert to host, when arp_in(), so here convert back to net endian
+    ahdr->hwtype = htons(ahdr->hwtype);
+    ahdr->protype = htons(ahdr->protype);
+    ahdr->opcode = htons(ahdr->opcode);
+    /* ether field */
+    net_tx(dev, pkb, ARP_HDR_LEN + ARP_DATA_LEN, ETH_P_ARP, ehdr->smac);
 }
 
+static void arp_recv(struct netdev *dev, struct pkbuf *pkb)
+{
+    struct eth_hdr *ehdr = (struct eth_hdr *)pkb->pk_data;
+    struct arp_hdr *ahdr = (struct arp_hdr *)ehdr->payload;
+    struct arp_ipv4 *payload = (struct arp_ipv4 *)ahdr->data;
+
+    struct arpentry *ae;
+
+    arpdata_dbg("in", payload);
+
+    // drop multi target ip(refer to linux)
+    if (MULTICAST(payload->dip)) {
+        DEBUG_PRINT("multicast tip\r\n");
+        goto free_pkb;
+    }
+
+    if (payload->dip != dev->net_ipaddr) {
+        DEBUG_PRINT("not for us");
+        goto free_pkb;
+    }
+
+    ae = arp_cache_lookup(ahdr->protype, payload->sip);
+    if (ae) {   // we have this ip's arpentry already
+        // update old arp entry
+        memcpy(ae->ae_hwaddr, payload->smac, NETDEV_ALEN);
+
+        if (ae->ae_state == ARP_STATE_WAITING) {
+            //对于原先处于 WAITING 状态的 entry,现在已经知道这个ip的mac了,
+            //有一些包正等待这个结果才能发送,所以这里就发送(可能会导致收到一些 arp reply)
+            //典型场景就是:发送ip数据包,发现没有这个ip对应的mac,则先进入这个entry 的 pending list,
+            //这个entry变成WAITING状态,等收到对方对request的应答后,这里将刚才的数据包发送出去
+            arp_queue_send(ae);
+        }
+        ae->ae_state = ARP_STATE_RESOLVED;
+        ae->ae_ttl = ARP_TTL_TIMEOUT;
+    } else if (ahdr->opcode == ARP_OP_REQUEST) {
+        // insert to cache
+        arp_cache_insert(dev, ahdr->protype, payload->sip, payload->smac);
+    }
+
+    if (ahdr->opcode == ARP_OP_REQUEST) {
+        arp_reply(dev, pkb);
+        return;
+    }
+free_pkb:
+    free_pkb(pkb);
+}
+
+/*
+ * The algorithm is strictly based on RFC 826 ( and referred to linux )
+ * ARP Packet Reception
+ */
+int arp_in(struct netdev *dev, struct pkbuf *pkb)
+{
+    struct eth_hdr *ehdr = (struct eth_hdr *)pkb->pk_data;
+    struct arp_hdr *ahdr = (struct arp_hdr *)ehdr->payload;
+    struct arp_ipv4 *payload = (struct arp_ipv4 *)ahdr->data;
+
+    if (pkb->pk_type == PKT_OTHERHOST) {
+        DEBUG_PRINT("arp(l2) packet is not for us\r\n");
+        goto err_free_pkb;
+    }
+
+    if (pkb->pk_len < ETH_HDR_LEN + ARP_HDR_LEN) {
+        DEBUG_PRINT("arp packet is too small\r\n");
+        goto err_free_pkb;
+    }
+
+    // safe check for arp cheating
+    if (mac_cmp(payload->smac, ehdr->smac) != 0) {
+        DEBUG_PRINT("error sender hardware address\r\n");
+        goto err_free_pkb;
+    }
+    ahdr->hwtype = ntohs(ahdr->hwtype);
+    ahdr->protype = ntohs(ahdr->protype);
+    ahdr->opcode = ntohs(ahdr->opcode);
+
+    // ethernet/ip arp only
+    if (ahdr->hwtype != ARP_ETHERNET || ahdr->protype != ETH_P_IP ||
+        ahdr->hwsize != ETH_ALEN || ahdr->prosize != IP_ALEN) {
+        DEBUG_PRINT("unsupported L2/L3 protocol\r\n");
+        goto err_free_pkb;
+    }
+
+    if (ahdr->opcode != ARP_OP_REQUEST && ahdr->opcode != ARP_OP_REPLY) {
+        DEBUG_PRINT("unknown arp operation\r\n");
+        goto err_free_pkb;
+    }
+
+    arp_recv(dev, pkb);
+    return 0;
+err_free_pkb:
+    free_pkb(pkb);
+    return -1;
+}

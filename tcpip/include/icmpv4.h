@@ -26,8 +26,8 @@ struct icmp_v4_dst_unreachable {
 } __attribute__((packed));
 
 
-void icmpv4_incoming(struct sk_buff *skb);
-void icmpv4_reply(struct sk_buff *skb);
+//void icmpv4_incoming(struct sk_buff *skb);
+//void icmpv4_reply(struct sk_buff *skb);
 
 #endif
 

@@ -69,18 +69,19 @@ static void *stop_stack_handler(void *arg)
     }
 }
 
-static void *timers_start(void *arg)
+//triggered every 1s
+static void *timer_interrupt(void *arg)
 {
-    int i = 0;
+    //int i = 0;
     while(running) {
         //DEBUG_PRINT("timers_start %d\r\n", i++);
-        sleep(2);
+        sleep(1);
     }
     return NULL;
 }
 static void *start_ipc_listener(void *arg)
 {
-    int i = 0;
+    //int i = 0;
     while(running) {
         //DEBUG_PRINT("start_ipc_listener %d\r\n", i++);
         sleep(2);
@@ -106,16 +107,16 @@ int main()
     }
 
     netdev_init();
-    arp_init();
+    //arp_init();
 
     create_thread(THREAD_RECV_INT, recv_interrupt, NULL);
-    create_thread(THREAD_TIMER_INT, timers_start, NULL);
+    create_thread(THREAD_TIMER_INT, timer_interrupt, NULL);
     create_thread(THREAD_IPC, start_ipc_listener, NULL);
     create_thread(THREAD_SIGNAL, stop_stack_handler, &mask);
 
     join_threads(); //等待所有线程退出
 
-    free_arp();
+    //free_arp();
     netdev_exit();
     DEBUG_PRINT("Exit.\r\n");
     return 0;

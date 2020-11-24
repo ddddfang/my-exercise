@@ -4,11 +4,10 @@
 #include "main.h"
 
 
-#define DEBUG 1
 #define TAG
 
 
-#if DEBUG
+#ifdef DEBUG
 
 #define DEBUG_PRINT(str, ...)                       \
     printf("%s:%u: " TAG": " str, __FILE__, __LINE__, ##__VA_ARGS__);

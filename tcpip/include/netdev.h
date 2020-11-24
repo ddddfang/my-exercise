@@ -21,7 +21,7 @@ struct netstats {
 struct netdev_ops {
     int (*init)(struct netdev *);
     void (*exit)(struct netdev *);
-    int (*xmit)(struct netdev *, uint8_t *data, uint32_t len);
+    int (*xmit)(struct netdev *dev, struct pkbuf *pkb);
 };
 
 struct netdev {
@@ -36,28 +36,22 @@ struct netdev {
     struct netstats net_stats;      /* protocol independent statistic */
 };
 
-struct netdev *netdev_get(uint32_t sip);
-
 struct netdev *netdev_alloc(char *devstr, struct netdev_ops *netops);
 void netdev_free(struct netdev *dev);
 struct netdev *netdev_find(uint32_t sip);
-int net_tx(struct sk_buff *skb, uint8_t *dst_hw, uint16_t ethertype);
-int net_rx(struct sk_buff *skb);
+int net_tx(struct netdev *dev, struct pkbuf *pkb, int len, unsigned short proto, unsigned char *dst);
+int net_rx(struct netdev *dev, struct pkbuf *skb);
 void netdev_init(void);
 void netdev_exit(void);
 
 
 #ifdef DEBUG_ETH
 
-    #define eth_dbg(msg, hdr)                                               \
+    #define eth_dbg(msg, hdr)                                           \
     do {                                                                \
-        DEBUG_PRINT("eth "msg" ("                                       \
-        "dmac: %.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx, " \
-        "smac: %.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx, " \
-        "ethertype: %.4hx)\r\n",                               \
-        hdr->dmac[0], hdr->dmac[1], hdr->dmac[2], hdr->dmac[3], \
-        hdr->dmac[4], hdr->dmac[5], hdr->smac[0], hdr->smac[1], \
-        hdr->smac[2], hdr->smac[3], hdr->smac[4], hdr->smac[5], \
+        DEBUG_PRINT("eth "msg" (dmac:"MACFMT", smac:"MACFMT             \
+        "ethertype: %.4hx)\r\n",                                        \
+        MAC_FMT(hdr->dmac), MAC_FMT(hdr->smac),                         \
         hdr->ethertype); \
     } while (0)
 
@@ -69,28 +63,32 @@ void netdev_exit(void);
 
 //以太网数据包-----------------------------------------
 
-#define BUFLEN 1600
-
 struct eth_hdr
 {
-    unsigned char dmac[6];
-    unsigned char smac[6];
+    unsigned char dmac[NETDEV_ALEN];
+    unsigned char smac[NETDEV_ALEN];
     uint16_t ethertype;
     unsigned char payload[];
 } __attribute__((packed));
 
 #define ETH_HDR_LEN sizeof(struct eth_hdr)
 
-static inline struct eth_hdr *skb2eth(struct sk_buff *skb)
-{
-    struct eth_hdr *hdr = (struct eth_hdr *)skb_head(skb);
-    hdr->ethertype = ntohs(hdr->ethertype);
-    return hdr;
-}
-
-
-
 #define LOCALNET(dev) ((dev)->net_ipaddr & (dev)->net_mask)
 
+static inline int mac_cmp(void *hwa1, void *hwa2)
+{
+    return memcmp(hwa1, hwa2, NETDEV_ALEN);
+}
+
+static inline int is_eth_multicast(unsigned char *hwa)
+{
+    return (hwa[0] & 0x01);
+}
+
+static inline int is_eth_broadcast(unsigned char *hwa)
+{
+    //ethernet mac broadcast is FF:FF:FF:FF:FF:FF
+    return (hwa[0] & hwa[1] & hwa[2] & hwa[3] & hwa[4] & hwa[5]) == 0xff;
+}
 
 #endif

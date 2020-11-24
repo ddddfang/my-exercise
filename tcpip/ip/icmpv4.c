@@ -2,8 +2,8 @@
 #include "icmpv4.h"
 
 
-void icmpv4_incoming(struct sk_buff *skb) 
-{
+//void icmpv4_incoming(struct sk_buff *skb)
+//{
 //    struct iphdr *iphdr = ip_hdr(skb);
 //    struct icmp_v4 *icmp = (struct icmp_v4 *) iphdr->data;
 //
@@ -25,10 +25,10 @@ void icmpv4_incoming(struct sk_buff *skb)
 //drop_pkt:
 //    free_skb(skb);
 //    return;
-}
+//}
 
-void icmpv4_reply(struct sk_buff *skb)
-{
+//void icmpv4_reply(struct sk_buff *skb)
+//{
 //    struct iphdr *iphdr = ip_hdr(skb);
 //    struct icmp_v4 *icmp;
 //    struct sock sk;
@@ -50,6 +50,6 @@ void icmpv4_reply(struct sk_buff *skb)
 //
 //    ip_output(&sk, skb);
 //    free_skb(skb);
-}
+//}
 
 

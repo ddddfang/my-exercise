@@ -26,17 +26,22 @@ struct iphdr {
     uint8_t data[];
 } __attribute__((packed));
 
+#define IP_ALEN 4
+
+#define MULTICAST(netip) ((0x000000f0 & (netip)) == 0x000000e0)
+#define BROADCAST(netip) (((0xff000000 & (netip)) == 0xff000000) ||\
+                ((0xff000000 & (netip)) == 0x00000000))
 
 #define IP_HDR_LEN sizeof(struct iphdr)
 //这是计算ip数据包的 数据部分 的长度
 #define ip_len(ip) (ip->len - (ip->ihl * 4))
 
-static inline struct iphdr *ip_hdr(const struct sk_buff *skb)
-{
-    return (struct iphdr *)(skb->head + ETH_HDR_LEN);
-}
+//static inline struct iphdr *ip_hdr(const struct sk_buff *skb)
+//{
+//    return (struct iphdr *)(skb->head + ETH_HDR_LEN);
+//}
 
-int ip_rcv(struct sk_buff *skb);
+//int ip_rcv(struct sk_buff *skb);
 
 static inline uint32_t ip_parse(char *addr)
 {
@@ -53,7 +58,6 @@ static inline uint32_t ip_parse(char *addr)
 }
 
 
-#define DEBUG_IP 1
 
 #ifdef DEBUG_IP
     #define ip_dbg(msg, hdr)                                                \

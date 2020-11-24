@@ -3,13 +3,39 @@
 #include "ip.h"
 #include "arp.h"
 #include "tap_if.h"
+#include "loop_if.h"
 
 //我们有一个固定的loop逻辑网卡
-static struct netdev *loop;
+//static struct netdev *loop;
 
 //其他的网卡使用list串起来
 static struct list_head net_devices;
 
+//full fill some fields, and return eth_hdr in pkb
+static struct eth_hdr *eth_init(struct netdev *dev, struct pkbuf *pkb)
+{
+    struct eth_hdr *ehdr = (struct eth_hdr *)pkb->pk_data;
+    if (pkb->pk_len < (int)ETH_HDR_LEN) {
+        DEBUG_PRINT("received packet is too small:%d bytes\r\n", pkb->pk_len);
+        return NULL;
+    }
+    /* hardware address type */
+    if (is_eth_multicast(ehdr->dmac)) {
+        if (is_eth_broadcast(ehdr->dmac)) {
+            pkb->pk_type = PKT_BROADCAST;
+        } else {
+            pkb->pk_type = PKT_MULTICAST;
+        }
+    } else if (!mac_cmp(ehdr->dmac, dev->net_hwaddr)) {
+        pkb->pk_type = PKT_LOCALHOST;
+    } else {
+        pkb->pk_type = PKT_OTHERHOST;
+    }
+    /* packet protocol */
+    pkb->pk_pro = ntohs(ehdr->ethertype);
+    pkb->pk_indev = dev;
+    return ehdr;
+}
 
 /* Alloc localhost net devices */
 struct netdev *netdev_alloc(char *devstr, struct netdev_ops *netops)
@@ -50,81 +76,52 @@ struct netdev *netdev_find(uint32_t sip)
     return NULL;
 }
 
-//看起来 net_tx 并不分配skbuff
-int net_tx(struct sk_buff *skb, uint8_t *dst_hw, uint16_t ethertype)
+//init a pkb, and send out it through dev ifterface
+//before we call this tx func, data should be in "pkb->pk_data + ETH_HDR_LEN"
+//and it's valid length is len(param "int len")
+int net_tx(struct netdev *dev, struct pkbuf *pkb, int len, unsigned short proto, unsigned char *dst)
 {
-//    struct ether *ehdr = (struct ether *)pkb->pk_data;
-//
-//    /* first copy to eth_dst, maybe eth_src will be copied to eth_dst */
-//    ehdr->eth_pro = _htons(proto);
-//    hwacpy(ehdr->eth_dst, dst);
-//    hwacpy(ehdr->eth_src, dev->net_hwaddr);
-//
-//    l2dbg(MACFMT " -> " MACFMT "(%s)",
-//    macfmt(ehdr->eth_src),
-//    macfmt(ehdr->eth_dst),
-//    ethpro(proto));
-//
-//    pkb->pk_len = len + ETH_HRD_SZ;
-//    /* real transmit packet */
-//    dev->net_ops->xmit(dev, pkb);
-//    free_pkb(pkb);
-
-    struct netdev *dev = skb->dev;
-    struct eth_hdr *hdr;
     int ret = 0;
+    struct eth_hdr *ehdr = (struct eth_hdr *)pkb->pk_data;
 
-    skb_push(skb, ETH_HDR_LEN);
-    hdr = (struct eth_hdr *)skb->data;
+    /* first copy to eth_dst, maybe eth_src will be copied to eth_dst */
+    ehdr->ethertype = htons(proto);
+    memcpy(ehdr->dmac, dst, NETDEV_ALEN);
+    memcpy(ehdr->smac, dev->net_hwaddr, NETDEV_ALEN);
 
-    memcpy(hdr->dmac, dst_hw, NETDEV_ALEN);
-    memcpy(hdr->smac, dev->net_hwaddr, NETDEV_ALEN);
+    eth_dbg("out", ehdr);
 
-    hdr->ethertype = htons(ethertype);
-    eth_dbg("out", hdr);
-
-    if (dev->net_ops && dev->net_ops->xmit)
-        ret = dev->net_ops->xmit(dev, skb->data, skb->len);
+    pkb->pk_len = len + (int)ETH_HDR_LEN;
+    /* real transmit packet */
+    if (dev && dev->net_ops && dev->net_ops->xmit) {
+        ret = dev->net_ops->xmit(dev, pkb);
+    }
+    free_pkb(pkb);
     return ret;
 }
 
-int net_rx(struct sk_buff *skb)
+int net_rx(struct netdev *dev, struct pkbuf *pkb)
 {
-//    struct ether *ehdr = eth_init(dev, pkb);
-//    if (!ehdr)
-//        return;
-//    l2dbg(MACFMT " -> " MACFMT "(%s)", macfmt(ehdr->eth_src), macfmt(ehdr->eth_dst), ethpro(pkb->pk_pro));
-//    pkb->pk_indev = dev;
-//    switch (pkb->pk_pro) {
-//        case ETH_P_RARP:
-//            //      rarp_in(dev, pkb);
-//            break;
-//        case ETH_P_ARP:
-//            arp_in(dev, pkb);
-//            break;
-//        case ETH_P_IP:
-//            ip_in(dev, pkb);
-//            break;
-//        default:
-//            l2dbg("drop unkown-type packet");
-//            free_pkb(pkb);
-//            break;
-//    }
-    struct eth_hdr *hdr = skb2eth(skb);
-    eth_dbg("in", hdr);
-
-    switch (hdr->ethertype) {
+    struct eth_hdr *ehdr = eth_init(dev, pkb);
+    if (!ehdr) {
+        DEBUG_PRINT("eth_init error\r\n");
+        free_pkb(pkb);
+        return -1;
+    }
+    eth_dbg("in", ehdr);
+    switch (pkb->pk_pro) {
+        case ETH_P_RARP:
+            //      rarp_in(dev, pkb);
+            break;
         case ETH_P_ARP:
-            //arp_rcv(skb);
-            DEBUG_PRINT("aro_rcv.\r\n");
+            arp_in(dev, pkb);
             break;
         case ETH_P_IP:
-            //ip_rcv(skb);
-            DEBUG_PRINT("ip_rcv.\r\n");
+            //ip_in(dev, pkb);
             break;
-        case ETH_P_IPV6:
         default:
             //DEBUG_PRINT("Unsupported ethertype %x\n", hdr->ethertype);
+            free_pkb(pkb);
             break;
     }
     return 0;
@@ -133,24 +130,14 @@ int net_rx(struct sk_buff *skb)
 void netdev_init(void)
 {
     list_init(&net_devices);
+    loop_init();
     veth_init();
 }
 
 void netdev_exit(void)
 {
     veth_exit();
+    loop_exit();
 }
 
-struct netdev *netdev_get(uint32_t sip)
-{
-    struct list_head *item;
-    struct netdev *entry;
-    list_for_each(item, &net_devices) {
-        entry = list_entry(item, struct netdev, net_list);
-        if (entry->net_ipaddr == sip) {
-            return entry;
-        }
-    }
-    return NULL;
-}
 
