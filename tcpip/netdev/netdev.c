@@ -5,8 +5,6 @@
 #include "tap_if.h"
 #include "loop_if.h"
 
-//我们有一个固定的loop逻辑网卡
-//static struct netdev *loop;
 
 //其他的网卡使用list串起来
 static struct list_head net_devices;

@@ -6,7 +6,7 @@
 #define LOOPBACK_IPADDR     0x0100007F  /* 127.0.0.1 */
 #define LOOPBACK_NETMASK    0x000000FF  /* 255.0.0.0 */
 
-static struct netdev *loop;
+struct netdev *loop;
 
 static int loop_dev_init(struct netdev *dev)
 {

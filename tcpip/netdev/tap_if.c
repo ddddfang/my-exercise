@@ -16,10 +16,6 @@
 #define TAG "NETDEV"
 #endif
 
-//for tap
-#define TAP_ROUTE   "10.0.0.0/24"
-#define FAKE_TAP_NETMASK    0x00ffffff  /* 255.255.255.0 */
-#define FAKE_TAP_ADDR       0x0200000a  /* 10.0.0.2 */
 
 #define VETH_NETMASK    0x00ffffff  /* 255.255.255.0 */
 #define VETH_IPADDR     0x0100000a  /* 10.0.0.1 */
@@ -82,7 +78,7 @@ int tap_write(unsigned char *buf, int len)
 }
 
 //----------------------------------------------------
-static struct netdev *veth;
+struct netdev *veth;
 
 static int veth_dev_init(struct netdev *dev)
 {
