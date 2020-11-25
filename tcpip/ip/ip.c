@@ -6,16 +6,6 @@
 #define TAG "IP"
 #endif
 
-//-------------------ip_input
-
-//将ip数据包中的相关字段转换为小端
-static void ip_init_pkt(struct iphdr *ih)
-{
-    ih->saddr = ntohl(ih->saddr);
-    ih->daddr = ntohl(ih->daddr);
-    ih->len = ntohs(ih->len);
-    ih->id = ntohs(ih->id);
-}
 
 //int ip_rcv(struct sk_buff *skb)
 //{
@@ -70,3 +60,69 @@ static void ip_init_pkt(struct iphdr *ih)
 //    //free_skb(skb);
 //    return 0;
 //}
+
+void ip_recv_route(struct pkbuf *pkb)
+{
+//    if (rt_input(pkb) < 0)
+//        return;
+//    /* Is this packet sent to us? */
+//    if (pkb->pk_rtdst->rt_flags & RT_LOCALHOST) {
+//        ip_recv_local(pkb);
+//    } else {
+//        ip_hton(pkb2ip(pkb));
+//        ip_forward(pkb);
+//    }
+}
+
+void ip_in(struct netdev *dev, struct pkbuf *pkb)
+{
+    struct eth_hdr *ehdr = (struct eth_hdr *)pkb->pk_data;
+    struct ip_hdr *iphdr = (struct ip_hdr *)ehdr->payload;
+    int hlen;
+
+    /* Fussy sanity check */
+    if (pkb->pk_type == PKT_OTHERHOST) {
+        DEBUG_PRINT("ip(l2) packet is not for us\r\n");
+        goto err_free_pkb;
+    }
+
+    if (pkb->pk_len < (int)(ETH_HDR_LEN + IP_HDR_LEN)) {
+        DEBUG_PRINT("ip packet is too small\r\n");
+        goto err_free_pkb;
+    }
+
+    if (ipver(iphdr) != IP_VERSION_4) {
+        DEBUG_PRINT("ip packet is not version 4\r\n");
+        goto err_free_pkb;
+    }
+
+    hlen = iphlen(iphdr);
+    if (hlen < (int)IP_HDR_LEN) {
+        DEBUG_PRINT("ip header is too small\r\n");
+        goto err_free_pkb;
+    }
+
+    if (checksum(iphdr, hlen, 0) != 0) {
+        DEBUG_PRINT("ip checksum is error\r\n");
+        goto err_free_pkb;
+    }
+
+    ip_ntoh(iphdr);
+    if (iphdr->len < hlen || pkb->pk_len < (int)ETH_HDR_LEN + iphdr->len) {
+        DEBUG_PRINT("ip size is unknown\r\n");
+        goto err_free_pkb;
+    }
+
+    if (pkb->pk_len > (int)ETH_HDR_LEN + iphdr->len)
+        pkb_trim(pkb, (int)ETH_HDR_LEN + iphdr->len);
+
+    /* Now, we can take care of the main ip processing safely. */
+    DEBUG_PRINT(IPFMT " -> " IPFMT "(%d/%d bytes)\r\n",
+                IP_FMT(iphdr->saddr), IP_FMT(iphdr->daddr),
+                hlen, iphdr->len);
+    ip_recv_route(pkb);
+    return;
+
+err_free_pkb:
+    free_pkb(pkb);
+}
