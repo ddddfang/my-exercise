@@ -133,7 +133,7 @@ void *recv_interrupt(void *arg)
             free_pkb(pkb);
             return NULL;
         } else {
-            DEBUG_PRINT("read net dev size: %d\n", read_len);
+            //DEBUG_PRINT("read net dev size: %d\r\n", read_len);
             veth->net_stats.rx_packets++;
             veth->net_stats.rx_bytes += read_len;
             pkb->pk_len = read_len;

@@ -74,7 +74,7 @@ static void arp_recv(struct netdev *dev, struct pkbuf *pkb)
     }
 
     if (payload->dip != dev->net_ipaddr) {
-        DEBUG_PRINT("not for us");
+        DEBUG_PRINT("not for us\r\n");
         goto free_pkb;
     }
 
@@ -101,6 +101,7 @@ static void arp_recv(struct netdev *dev, struct pkbuf *pkb)
         arp_reply(dev, pkb);
         return;
     }
+
 free_pkb:
     free_pkb(pkb);
 }
@@ -145,9 +146,9 @@ int arp_in(struct netdev *dev, struct pkbuf *pkb)
         DEBUG_PRINT("unknown arp operation\r\n");
         goto err_free_pkb;
     }
-
     arp_recv(dev, pkb);
     return 0;
+
 err_free_pkb:
     free_pkb(pkb);
     return -1;

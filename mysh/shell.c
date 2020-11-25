@@ -398,11 +398,11 @@ cli_status_t execute_command(cmd_parsed_t *cmd)
         if (match_cmd(cmd_tbl[i].cmd, cmd->argv[0])) {
             if (cmd_tbl[i].func)
                 rc = (*cmd_tbl[i].func)(cmd->argc, cmd->argv);
-                if (rc == CLI_INVALID_ARGS) {   //print usage
-                    if (cmd_tbl[i].usage)
-                        (*cmd_tbl[i].usage)();
-                }
-                return rc;
+            if (rc == CLI_INVALID_ARGS) {   //print usage
+                if (cmd_tbl[i].usage)
+                    (*cmd_tbl[i].usage)();
+            }
+            return rc;
         }
     }
     return CLI_CMD_NOT_FOUND;

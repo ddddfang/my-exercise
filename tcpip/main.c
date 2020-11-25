@@ -29,15 +29,17 @@ static void create_thread(pthread_t id, void *(*func) (void *), void *arg)
 
 static void join_threads()
 {
-    //等待所有线程退出(signal handle的线程早就return了)
-    for (int i = 0; i < THREAD_MAXNUM; i++) {
-        if (i != THREAD_SIGNAL) {
-            if (pthread_join(threads[i], NULL) != 0) {
-                ERROR_PRINT("Error when joining threads.\r\n");
-                exit(1);
-            }
-        }
-    }
+//    //等待所有线程退出(signal handle的线程早就return了)
+//    for (int i = 0; i < THREAD_MAXNUM; i++) {
+//        if (i != THREAD_SIGNAL) {
+//            if (pthread_join(threads[i], NULL) != 0) {
+//                ERROR_PRINT("Error when joining threads.\r\n");
+//                exit(1);
+//            }
+//        }
+//    }
+    //所以这里并不等待,pthread_cancel那些线程自己会在适当的时候退出
+    pthread_join(threads[THREAD_SIGNAL], NULL);
 }
 
 static void *stop_stack_handler(void *arg)
