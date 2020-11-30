@@ -80,6 +80,10 @@ static inline void ip_ntoh(struct ip_hdr *iphdr)
 }
 #define ip_hton(ip) ip_ntoh(ip)
 
+static inline int equsubnet(unsigned int mask, unsigned int ip1, unsigned int ip2)
+{
+    return ((mask & ip1) == (mask & ip2));
+}
 //static inline uint32_t ip_parse(char *addr)
 //{
 //    uint32_t dst = 0;

@@ -17,7 +17,7 @@ struct pkbuf {
     int pk_len;     //valid data len, of pk_data[]
     int pk_refcnt;
     struct netdev *pk_indev;    //which net interface we get this packet from.
-    struct rtentry *pk_rtdst;
+    struct rtentry *pk_rtdst;   //这个数据包到达目的地需要的路由
     //struct sock *pk_sk;
     unsigned char pk_data[0];
 }; //__attribute__((packed));

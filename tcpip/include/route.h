@@ -3,6 +3,7 @@
 
 
 #include "utils.h"
+#include "skbuff.h"
 
 struct rtentry {
     struct list_head rt_list;
@@ -19,5 +20,13 @@ struct rtentry {
 #define RT_LOCALHOST    0x00000001
 #define RT_DEFAULT      0x00000002
 
+
+struct rtentry *rt_lookup(unsigned int ipaddr);
+void rt_add(unsigned int net, unsigned int netmask, unsigned int gw,
+            int metric, unsigned int flags, struct netdev *dev);
+void rt_init(void);
+int rt_input(struct pkbuf *pkb);
+int rt_output(struct pkbuf *pkb);
+void rt_traverse(void);
 
 #endif

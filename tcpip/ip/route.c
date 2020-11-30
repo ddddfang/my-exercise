@@ -121,7 +121,6 @@ int rt_output(struct pkbuf *pkb)
     return 0;
 }
 
-#include "stdlib.h"
 void rt_traverse(void)
 {
     struct rtentry *rt;
