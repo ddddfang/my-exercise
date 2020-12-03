@@ -1,89 +1,11 @@
 
 
 //-----------------------------------------------------------------------
-#include <string.h> //memcpy,memset
-#include <stdio.h>  //EOF getchar putchar
-#include <termio.h> //
-//#include <stdarg.h>
-
 #include "shell.h"
-#include "printf.h"
-#include "shell_port.h"
-
-int sh_strlen(char *str)
-{
-    int i = 0;
-    while(*str++ != '\0')
-        i++;
-    return i;
-}
-
-int sh_memset(void *p, int val, int size)
-{
-    memset(p, val, size);
-    return 0;
-}
-
-int sh_memcpy(void *dst, void *src, int size)
-{
-    memcpy(dst, src, size);
-    return 0;
-}
-
-//关于立即接收, https://www.cnblogs.com/life2refuel/p/5720043.html
-//linux下的getchar默认是做了处理的,这里直接使用raw方式,应该就是嵌入式环境下的
-//串口接收方式,嵌入式环境下uart使用while轮询方式recv,就是这里的sh_getch
-//像 getchar 返回 EOF(ctrl+d),这些都是默认getchar才有的
-int shell_getch(void)
-{
-    int cr;
-    struct termios nts, ots;
-
-    if (tcgetattr(0, &ots) < 0) //得到当前终端(0表示标准输入)的设置
-        return EOF;
-
-    nts = ots;
-    cfmakeraw(&nts); //设置终端为Raw原始模式，该模式下所有的输入数据以字节为单位被处理
-    if (tcsetattr(0, TCSANOW, &nts) < 0) // 设置上更改之后的设置
-        return EOF;
-
-    cr = getchar();
-    if (tcsetattr(0, TCSANOW, &ots) < 0) // 设置还原成老的模式
-        return EOF;
-
-    return cr;
-}
-
-int shell_putchar(char ch)
-{
-    putchar(ch);
-    return 0;
-}
+#include "shell_internal_cmds.h"
+#include "common/printf.h"
 
 
-//-----------------------------------------------------------------------
-
-//我们只用提供 shell_getch 和 shell_putchar 的实现,然后调用 shell_printf_init
-//然后就可以使用 shell_printf 了
-// This function is required by printf function
-void pputc ( void* p, char c) {
-    shell_putchar(c);
-}
-
-int shell_printf_init()
-{
-    init_printf(0, pputc);
-    return 0;
-}
-
-//int shell_printf(const char *restrict format, ...)
-//{
-//	va_list args;
-//	va_start(args, format);
-//	int ret = vprintf(format, args);
-//	va_end(args);
-//	return ret;
-//}
 
 //-----------------------------------------------------------------------
 

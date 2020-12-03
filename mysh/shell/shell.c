@@ -1,5 +1,8 @@
 #include "shell.h"
-#include "shell_port.h"
+#include "shell_internal_cmds.h"
+#include "common/lib_mem.h"
+#include "common/printf.h"
+#include "common/uart.h"
 
 
 //ascii
@@ -412,7 +415,7 @@ int shell_init()
 {
     int i = 0;
     cmd_tbl_items = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
-    shell_printf_init();
+    //shell_printf_init();
     shell_printf("********************************************************************\r\n");
     shell_printf("** this is a simple cli, type 'help' to see what cmds is supported.\r\n");
     shell_printf("********************************************************************\r\n");
@@ -488,12 +491,5 @@ int shell_execute()
         }
     }
     return 0;
-}
-
-int main() {
-
-    shell_init();
-
-    return shell_execute();
 }
 

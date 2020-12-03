@@ -100,7 +100,13 @@ void tfp_sprintf(char* s,char *fmt, ...);
 
 void tfp_format(void* putp,void (*putf) (void*,char),char *fmt, va_list va);
 
-#define printf tfp_printf
-#define sprintf tfp_sprintf
+//#define printf tfp_printf
+//#define sprintf tfp_sprintf
+#define shell_printf tfp_printf
+
+
+//-------------------------------
+int shell_printf_init();
+//int shell_printf(const char *restrict format, ...);
 
 #endif

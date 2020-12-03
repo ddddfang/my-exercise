@@ -231,3 +231,30 @@ void tfp_sprintf(char* s,char *fmt, ...)
     putcp(&s,0);
     va_end(va);
     }
+
+
+
+#include "uart.h"
+//-----------------------------------------------------------------------
+
+//我们只用提供 shell_getch 和 shell_putchar 的实现,然后调用 shell_printf_init
+//然后就可以使用 shell_printf 了
+// This function is required by printf function
+void pputc ( void* p, char c) {
+    shell_putchar(c);
+}
+
+int shell_printf_init()
+{
+    init_printf(0, pputc);
+    return 0;
+}
+
+//int shell_printf(const char *restrict format, ...)
+//{
+//	va_list args;
+//	va_start(args, format);
+//	int ret = vprintf(format, args);
+//	va_end(args);
+//	return ret;
+//}
