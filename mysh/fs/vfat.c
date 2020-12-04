@@ -53,6 +53,19 @@ cli_status_t ufat_func(int argc, char *argv[]) {
         cur_dir_full[0] = '/';
         cur_dir_full[1] = '\0';
         shell_set_prompt(cur_dir_full);
+        while (1) {
+            struct ufat_dirent inf;
+            char lfn[UFAT_LFN_MAX_UTF8];
+            rc = ufat_dir_read(&dir, &inf, lfn, sizeof(lfn));
+            if (rc < 0) {
+                return CLI_EXE_ERROR;
+            }
+            if (rc) {   //reach the end
+                break;
+            }
+            //吧当前目录下的文件名添加到shell关键字
+            shell_add_keyword(lfn);
+        }
         return CLI_OK;
     } else if (match_cmd("info", argv[1])) {
         CHECK_FS_OPEN();
@@ -194,9 +207,44 @@ cli_status_t cd_func(int argc, char *argv[]) {
         shell_printf("cannot find this dir.\r\n");
         return CLI_EXE_ERROR;
     }
+
+    //在开始实际操作前,先把当前目录下的文件名从shell关键字移除
+    while (1) {
+        struct ufat_dirent inf;
+        char lfn[UFAT_LFN_MAX_UTF8];
+        rc = ufat_dir_read(&dir, &inf, lfn, sizeof(lfn));
+        if (rc < 0) {
+            return CLI_EXE_ERROR;
+        }
+        if (rc) {   //reach the end
+            break;
+        }
+        //shell_remove_keyword(lfn);
+        shell_printf("removing %s\r\n",lfn);
+    }
+
     rc = ufat_open_subdir(&uf, &dir, &inf);
     if (rc) {
         return CLI_EXE_ERROR;
+    }
+
+    //进入新目录后,再把当前目录下的文件名添加到shell关键字
+    while (1) {
+        struct ufat_dirent inf;
+        char lfn[UFAT_LFN_MAX_UTF8];
+        rc = ufat_dir_read(&dir, &inf, lfn, sizeof(lfn));
+        if (rc < 0) {
+            return CLI_EXE_ERROR;
+        }
+        if (rc) {   //reach the end
+            break;
+        }
+        if (match_cmd(".", lfn) || match_cmd("..", lfn)) {
+            //
+        } else {
+            //shell_add_keyword(lfn);
+            shell_printf("adding %s\r\n",lfn);
+        }
     }
 
     //modify cur_dir_full[]

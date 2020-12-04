@@ -62,6 +62,8 @@ int match_cmd(char *a, char *b);
 cli_status_t execute_command(cmd_parsed_t *cmd);
 
 int shell_set_prompt(char *p);
+int shell_add_keyword(char *keyname);
+int shell_remove_keyword(char *keyname);
 int shell_init();
 int shell_execute();
 

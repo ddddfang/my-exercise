@@ -405,6 +405,31 @@ int shell_set_prompt(char *p)
     return 0;
 }
 
+int shell_add_keyword(char *keyname)
+{
+    sh_memcpy(shell_keywords.keywords_buf[shell_keywords.keywords_cnt++], keyname, sh_strlen(keyname));
+    return 0;
+}
+
+int shell_remove_keyword(char *keyname)
+{
+    int i = 0, j = 0;
+    for (i = 0; i < shell_keywords.keywords_cnt; i++) {
+        if(match_cmd(keyname, shell_keywords.keywords_buf[i])) {
+            j = 1;
+            break;
+        }
+    }
+    for (; i < shell_keywords.keywords_cnt - 1; i++) {
+        sh_memcpy(shell_keywords.keywords_buf[i], shell_keywords.keywords_buf[i + 1], MAX_KEY_WORD_SIZE);
+    }
+
+    if (j == 1) {
+        shell_keywords.keywords_cnt--;
+    }
+    return 0;
+}
+
 int shell_init()
 {
     int i = 0;
@@ -416,8 +441,9 @@ int shell_init()
     shell_printf("********************************************************************\r\n");
 
     for (i = 0; i < cmd_tbl_items; i++) {
-        sh_memcpy(shell_keywords.keywords_buf[i], cmd_tbl[i].cmd, sh_strlen(cmd_tbl[i].cmd));
-        shell_keywords.keywords_cnt++;
+        //sh_memcpy(shell_keywords.keywords_buf[i], cmd_tbl[i].cmd, sh_strlen(cmd_tbl[i].cmd));
+        //shell_keywords.keywords_cnt++;
+        shell_add_keyword(cmd_tbl[i].cmd);
     }
 
     DEBUG_PRINT("all supported keywords are { ");
