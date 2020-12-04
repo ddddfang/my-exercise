@@ -1,9 +1,9 @@
 #include "shell.h"
-#include "shell_internal_cmds.h"
 #include "common/lib_mem.h"
 #include "common/printf.h"
 #include "common/uart.h"
 
+#include "shell_cmd_tbl.h"
 
 //ascii
 // [up] key: 0x1b 0x5b 0x41
@@ -27,34 +27,11 @@
 
 //--------------------------------------------------
 int shell_should_exit = 0;
-//所有支持的命令
-cmd_t cmd_tbl[] = {
-    {
-        .cmd = "help",
-        .usage = help_usage,
-        .func = help_func
-    },
-    {
-        .cmd = "echo",
-        .usage = echo_usage,
-        .func = echo_func
-    },
-    {
-        .cmd = "history",
-        .usage = history_usage,
-        .func = history_func
-    },
-    {
-        .cmd = "exit",
-        .usage = exit_usage,
-        .func = exit_func
-    }
-};
-int cmd_tbl_items = 0;
 //命令执行记录
 cmd_records_t cmd_records;
 //支持 auto_complete 的关键字
 shell_keywords_t shell_keywords;
+static char prompt[255];
 //--------------------------------------------------
 
 char *status_to_str(cli_status_t st)
@@ -125,7 +102,7 @@ static int auto_complete(char *buf, int *pi)
             shell_printf("%s  ", shell_keywords.keywords_buf[idxs[i]]);
         }
         //打印传进来的字符串,不要修改,等下一次tab 直到 match_cnt 为1
-        shell_printf("\r\n>>%s", buf);  //这里打印tmp的话,带空格的case会只显示空格后的内容,运行还是正常的
+        shell_printf("\r\n%s%s", prompt, buf);  //这里打印tmp的话,带空格的case会只显示空格后的内容,运行还是正常的
     } else if (match_cnt == 1) {
         //直接修改 buf 和 *pi
         for (i = (*pi) - (blank_pos + 1); i < sh_strlen(shell_keywords.keywords_buf[idxs[0]]); i++) {
@@ -411,10 +388,28 @@ cli_status_t execute_command(cmd_parsed_t *cmd)
     return CLI_CMD_NOT_FOUND;
 }
 
+int shell_set_prompt(char *p)
+{
+    int i = 0;
+    if (p) {
+        i = sh_strlen(p);
+        if (i > 255 - 3) {
+            i = 255 - 3;
+            DEBUG_PRINT("prompt is too long!\r\n");
+        }
+        sh_memcpy(prompt, p, i);
+    }
+    prompt[i++] = '>';
+    prompt[i++] = '>';
+    prompt[i++] = '\0';
+    return 0;
+}
+
 int shell_init()
 {
     int i = 0;
-    cmd_tbl_items = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
+    //cmd_tbl_items = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
+    cmd_tbl_init();
     //shell_printf_init();
     shell_printf("********************************************************************\r\n");
     shell_printf("** this is a simple cli, type 'help' to see what cmds is supported.\r\n");
@@ -441,9 +436,10 @@ int shell_execute()
     //char cur_cmd_buf[COMMAND_BUF_SIZE] = {0};
     char cur_cmd_buf[COMMAND_BUF_SIZE];
     cli_status_t rc = CLI_OK;
+    shell_set_prompt("");
 
     while (shell_should_exit == 0) {
-        shell_printf(">>");
+        shell_printf(prompt);
 
         sh_memset(cur_cmd_buf, 0, COMMAND_BUF_SIZE);
         input_key_code = read_input(cur_cmd_buf);

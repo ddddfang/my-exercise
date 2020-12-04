@@ -2,7 +2,7 @@
 
 //-----------------------------------------------------------------------
 #include "shell.h"
-#include "shell_internal_cmds.h"
+#include "shell_cmd_tbl.h"
 #include "common/printf.h"
 
 
@@ -108,4 +108,65 @@ cli_status_t exit_func(int argc, char *argv[]) {
     return CLI_OK;
 }
 
+#include "fs/vfat.h"
+
+int cmd_tbl_items = 0;
+//所有支持的命令
+cmd_t cmd_tbl[] = {
+    {
+        .cmd = "help",
+        .usage = help_usage,
+        .func = help_func
+    },
+    {
+        .cmd = "echo",
+        .usage = echo_usage,
+        .func = echo_func
+    },
+    {
+        .cmd = "history",
+        .usage = history_usage,
+        .func = history_func
+    },
+    {
+        .cmd = "exit",
+        .usage = exit_usage,
+        .func = exit_func
+    },
+    //------------------------------
+    {
+        .cmd = "ufat",
+        .usage = ufat_usage,
+        .func = ufat_func
+    },
+    {
+        .cmd = "touch",
+        .usage = touch_usage,
+        .func = touch_func
+    },
+    {
+        .cmd = "mkdir",
+        .usage = mkdir_usage,
+        .func = mkdir_func
+    },
+    {
+        .cmd = "sync",
+        .usage = sync_usage,
+        .func = sync_func
+    },
+    {
+        .cmd = "ls",
+        .usage = ls_usage,
+        .func = ls_func
+    },
+    {
+        .cmd = "cd",
+        .usage = cd_usage,
+        .func = cd_func
+    },
+};
+
+void cmd_tbl_init() {
+    cmd_tbl_items = sizeof(cmd_tbl) / sizeof(cmd_tbl[0]);
+}
 
