@@ -218,14 +218,15 @@ int read_input(char *input)
     int i = 0;
     int ii = 0;
     char c;
+    //比较搞笑的是 keil MDK 的编译器,即使勾选了c99编译器仍然会出问题,
+    //保险起见定义放在最开头,不要放在执行语句后面就不会有问题
+    int offset = 0;    //0表示当前,-1表示上一个,-2表示前两个...
+    int ie = COMMAND_BUF_SIZE - 2;  //最后一个留给'\0'
 
     //当按下左右按键的时候,起始是光标移动到指定位置并插入
     //char expand_buf[COMMAND_BUF_SIZE] = {0};    //这会隐式调用memset
     char expand_buf[COMMAND_BUF_SIZE];
     sh_memset(expand_buf, 0, COMMAND_BUF_SIZE);
-    int ie = COMMAND_BUF_SIZE - 2;  //最后一个留给'\0'
-
-    int offset = 0;    //0表示当前,-1表示上一个,-2表示前两个...
 
     while (1) {
         c = shell_getch();

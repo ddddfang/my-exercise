@@ -4,9 +4,9 @@
 
 
 extern int cmd_tbl_items;
-extern cmd_t cmd_tbl[];
+extern const cmd_t cmd_tbl[];
 
-void cmd_tbl_init();
+void cmd_tbl_init(void);
 
 
 

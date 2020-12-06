@@ -112,7 +112,7 @@ cli_status_t exit_func(int argc, char *argv[]) {
 
 int cmd_tbl_items = 0;
 //所有支持的命令
-cmd_t cmd_tbl[] = {
+const cmd_t cmd_tbl[] = {
     {
         .cmd = "help",
         .usage = help_usage,

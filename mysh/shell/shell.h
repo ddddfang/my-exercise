@@ -55,7 +55,6 @@ typedef struct {
 } shell_keywords_t;
 
 char *status_to_str(cli_status_t st);
-int shell_printf(const char *restrict format, ...);
 int read_input(char *input);
 int parse_command(char *input, cmd_parsed_t *output);
 int match_cmd(char *a, char *b);
@@ -64,12 +63,10 @@ cli_status_t execute_command(cmd_parsed_t *cmd);
 int shell_set_prompt(char *p);
 int shell_add_keyword(char *keyname);
 int shell_remove_keyword(char *keyname);
-int shell_init();
-int shell_execute();
+int shell_init(void);
+int shell_execute(void);
 
 extern int shell_should_exit;
-extern cmd_t cmd_tbl[];
-extern int cmd_tbl_items;
 extern cmd_records_t cmd_records;
 
 #endif
