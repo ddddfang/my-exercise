@@ -1,0 +1,5 @@
+看起来没有设备树节点与本驱动对应的时候，kernel会报告
+
+loading out-of-tree module taints kernel.
+
+警告
